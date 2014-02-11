@@ -1,9 +1,8 @@
-#include <fftw3.h>
 #define N 32
 
 typedef struct dplan{
-  double * restrict y;
-  double * restrict dy;
+  double * y;
+  double * dy;
   fftw_plan p[2];
   double b;
 } dplan;

@@ -53,8 +53,11 @@ void exint(dplan *d){
   int i;
   double b=d->b;
   i=N;
+
+  //icc is much faster in this function. I think because it handles the following loop better.
+
   while(i-->0){
-     d->dy[i]=d->y[i]*IWEIGHTS[i];
+    d->dy[i]=d->y[i]*IWEIGHTS[i];
   }
       
   fftw_execute(d->p[0]);
