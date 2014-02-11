@@ -1,4 +1,3 @@
-#include <fftw3.h>
 #define N 32
 
 typedef struct dplan{
