@@ -1,6 +1,6 @@
 CC=icc
-#CFLAGS=-Ofast -flto -march=native -lfftw3 -lm -std=gnu99 -ftree-vectorizer-verbose=2
-CFLAGS=-align -Ofast  -march=native -lfftw3 -restrict -vec-report=2
+#CFLAGS=-Ofast -flto -march=native -lfftw3 -lm -std=gnu99 -ftree-vectorizer-verbose=0
+CFLAGS=-align -ipo -Ofast  -march=native -lfftw3 -restrict -vec-report=2
 
 default: test
 

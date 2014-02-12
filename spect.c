@@ -8,7 +8,7 @@ static double TY[N+1];
 
 void mkwi(){
   int i=N;
-  //TY=fftw_alloc_real(N+1);
+
   while(i-->0){
     WEIGHTS[i]=1/(-2*N*sin(M_PI*(i+.5)/N));
     IWEIGHTS[i]=sin(M_PI*(i+.5)/N)/(-2*N);
@@ -83,7 +83,6 @@ void exint(dplan *d){
   
   fftw_execute(d->p[1]);
 }
-
 
 /* 
  *
