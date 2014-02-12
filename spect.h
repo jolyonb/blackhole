@@ -14,6 +14,10 @@ void plint(dplan *d);
 void exddx(dplan *d);
 void exint(dplan *d);
 
+/* void plintdi(dplan *d); */
+/* void exintdi(dplan *d); */
+
+
 /* void plddxm(double *y, double *ty, double *dy, int n, fftw_plan *p1, fftw_plan *p2); */
 
 /* void exddxm(double * restrict ty, double * restrict dy, double * restrict b, const int n, const fftw_plan p1, const fftw_plan p2); */

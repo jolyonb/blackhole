@@ -13,6 +13,7 @@ int main(){
   meee.dy=dy;
   meee.b=1;
   int i=N;
+  int j;
 
   plint(&meee);
   //plddx(&meee);
@@ -29,6 +30,8 @@ int main(){
   i=1;while(i-->0){
     //exddx(&meee);
     exint(&meee);
+    
+    //j=N; while(j-->0) y[j]=sin(x[j]);
   }
 
   for(i=0;i<N;i++){

@@ -55,6 +55,7 @@ void exint(dplan *d){
   i=N;
 
   //icc is much faster in this function. I think because it handles the following loop better.
+  //I changed my mind. I really don't know why it's faster. it seems to vectorize the loops just fine.
 
   while(i-->0){
     d->dy[i]=d->y[i]*IWEIGHTS[i];
@@ -76,7 +77,6 @@ void exint(dplan *d){
 /* 
  * Potentially not useful after here. Probably just ignore.
  */
-
 void plddxm(double *y, double *ty, double *dy, int n, fftw_plan *p1, fftw_plan *p2){
   const int d[]={N};
   const fftw_r2r_kind t[]={FFTW_REDFT10,FFTW_RODFT01};
@@ -97,6 +97,34 @@ void plintd(double *y,double *ty, double *iy, fftw_plan *p1, fftw_plan *p2){
   const fftw_r2r_kind t[]={FFTW_RODFT10,FFTW_REDFT01};
   *p1=fftw_plan_r2r_1d(N,iy,ty+1,t[0],FFTW_EXHAUSTIVE);
   *p2=fftw_plan_r2r_1d(N,ty,iy,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
+}
+
+
+void plintdi(dplan *d){
+  const fftw_r2r_kind t[]={FFTW_RODFT10,FFTW_REDFT01};
+  d->p[0]=fftw_plan_r2r_1d(N,d->y,TY+1,t[0],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
+  d->p[1]=fftw_plan_r2r_1d(N,TY,d->dy,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
+}
+
+void exintdi(dplan *d){
+  int i;
+  double b=d->b;
+  i=N;
+  
+  while(i-->0){
+    d->y[i]*=IWEIGHTS[i];
+  }
+    
+  fftw_execute(d->p[0]);
+
+  i=N+1;
+  while(i-->2){
+    TY[i]/=i;
+    b+=2*TY[i]*(2*(i&1)-1);
+  }
+  TY[0]=b+2*TY[1];
+  
+  fftw_execute(d->p[1]);
 }
 
 //Potentially not useful.
