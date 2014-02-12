@@ -16,19 +16,28 @@ void mkwi(){
 }
 
 void plddx(dplan *d){
-   const fftw_r2r_kind t[]={FFTW_REDFT10,FFTW_RODFT01};
-   //   double *y=d->y;
-   d->p[0]=fftw_plan_r2r_1d(N,d->y,TY,t[0],FFTW_EXHAUSTIVE);
-   d->p[1]=fftw_plan_r2r_1d(N,TY+1,d->dy,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
+  // plddx plans a differentiation operation on the data stored at d->y to output to d->dy
+
+  const fftw_r2r_kind t[]={FFTW_REDFT10,FFTW_RODFT01};
+  //   double *y=d->y;
+  d->p[0]=fftw_plan_r2r_1d(N,d->y,TY,t[0],FFTW_EXHAUSTIVE);
+  d->p[1]=fftw_plan_r2r_1d(N,TY+1,d->dy,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
 }
 
 void plint(dplan *d){
+  // plint plans an integration operation on d->y to output to d->dy. Sorry oubout the name, I wrote the differentiater first.
+  
   const fftw_r2r_kind t[]={FFTW_RODFT10,FFTW_REDFT01};
   d->p[0]=fftw_plan_r2r_1d(N,d->dy,TY+1,t[0],FFTW_EXHAUSTIVE);
   d->p[1]=fftw_plan_r2r_1d(N,TY,d->dy,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
 }
 
 void exddx(dplan *d){
+  // executes a planed differentiation using:
+  // y = sum(a_n T_n(x)) = sum(a_n cos(n \theta)
+  //   => y' = sum(a_n n sin(n \theta) / sin(\theta))
+
+
   double b=d->b;
   fftw_execute(d->p[0]);
 
@@ -50,6 +59,8 @@ void exddx(dplan *d){
 }
 
 void exint(dplan *d){
+  // executes a planed integration using the reverse of the technique in exddx.
+
   int i;
   double b=d->b;
   i=N;
@@ -75,8 +86,15 @@ void exint(dplan *d){
 
 
 /* 
+ *
  * Potentially not useful after here. Probably just ignore.
+ *
+ *
+ *
+ *
+ *
  */
+
 void plddxm(double *y, double *ty, double *dy, int n, fftw_plan *p1, fftw_plan *p2){
   const int d[]={N};
   const fftw_r2r_kind t[]={FFTW_REDFT10,FFTW_RODFT01};
