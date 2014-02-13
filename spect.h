@@ -1,5 +1,6 @@
 #define N 32
 
+#pragma once
 typedef struct dplan{
   double * y;
   double * dy;
