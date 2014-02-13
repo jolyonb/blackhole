@@ -13,6 +13,7 @@ void mkwi();
 void plddx(dplan *d);
 void plint(dplan *d);
 void exddx(dplan *d);
+void exddxl(dplan *d);
 void exint(dplan *d);
 
 /* void plintdi(dplan *d); */

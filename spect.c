@@ -39,6 +39,31 @@ void exddx(dplan *d){
   double b=d->b;
   fftw_execute(d->p[0]);
 
+  int i;
+  i=N;
+  b*=N;
+  while(i-->1){
+    b+=TY[i]*(2*(i&1)-1);
+    TY[i]*=i;
+  }
+  TY[N]=(b-.5*TY[0]); //setting the boundary condition
+  
+  fftw_execute(d->p[1]);
+
+  i=N;
+
+  #pragma GCC ivdep
+  while(i-->0){
+     d->dy[i]*=WEIGHTS[i];
+  }  
+}
+
+void exddxl(dplan *d){
+  //puts the boundary condition on the left.
+  
+  double b=d->b;
+  fftw_execute(d->p[0]);
+
   unsigned int i;
   i=N;
   b*=N;
@@ -61,7 +86,7 @@ void exddx(dplan *d){
 void exint(dplan *d){
   // executes a planed integration using the reverse of the technique in exddx.
 
-  int i;
+  unsigned int i;
   double b=d->b;
   i=N;
 
