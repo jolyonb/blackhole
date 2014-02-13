@@ -2,10 +2,10 @@
 
 #pragma once
 typedef struct dplan{
-  double * y;
-  double * dy;
-  fftw_plan p[2];
-  double b;
+  double * y; //input
+  double * dy; //output
+  fftw_plan p[2]; //plans for transforming
+  double b; //boundary condition
 } dplan;
 
 void mkwi();
@@ -15,21 +15,3 @@ void plint(dplan *d);
 void exddx(dplan *d);
 void exddxl(dplan *d);
 void exint(dplan *d);
-
-/* void plintdi(dplan *d); */
-/* void exintdi(dplan *d); */
-
-
-/* void plddxm(double *y, double *ty, double *dy, int n, fftw_plan *p1, fftw_plan *p2); */
-
-/* void exddxm(double * restrict ty, double * restrict dy, double * restrict b, const int n, const fftw_plan p1, const fftw_plan p2); */
-
-
-
-/* void plddx(double *y, double *ty, double *dy, fftw_plan *p1, fftw_plan *p2); */
-
-/* void exddx(double * restrict ty, double * restrict dy, double b, const fftw_plan p1, const fftw_plan p2); */
-
-/* void plint(double *y, double *ty, double *iy, fftw_plan *p1, fftw_plan *p2); */
-
-/* void exint(double * restrict ty, double *restrict y, double * restrict iy, double b, const fftw_plan p1, const fftw_plan p2); */
