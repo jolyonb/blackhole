@@ -1,5 +1,4 @@
 #include <math.h>
-#include <fftw3.h>
 #include "spect.h"
 
 static double WEIGHTS[N];
@@ -18,16 +17,16 @@ void plddx(dplan *d){
   // plddx plans a differentiation operation on the data stored at d->y to output to d->dy
 
   const fftw_r2r_kind t[]={FFTW_REDFT10,FFTW_RODFT01};
-  d->p[0]=fftw_plan_r2r_1d(N,d->y,TY,t[0],FFTW_EXHAUSTIVE);
-  d->p[1]=fftw_plan_r2r_1d(N,TY+1,d->dy,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
+  d->p[0]=fftw_plan_r2r_1d(N,d->yin,TY,t[0],FFTW_EXHAUSTIVE);
+  d->p[1]=fftw_plan_r2r_1d(N,TY+1,d->yout,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
 }
 
 void plint(dplan *d){
   // plint plans an integration operation on d->y to output to d->dy. Sorry oubout the name, I wrote the differentiater first.
   
   const fftw_r2r_kind t[]={FFTW_RODFT10,FFTW_REDFT01};
-  d->p[0]=fftw_plan_r2r_1d(N,d->y,TY+1,t[0],FFTW_EXHAUSTIVE);
-  d->p[1]=fftw_plan_r2r_1d(N,TY,d->dy,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
+  d->p[0]=fftw_plan_r2r_1d(N,d->yin,TY+1,t[0],FFTW_EXHAUSTIVE);
+  d->p[1]=fftw_plan_r2r_1d(N,TY,d->yout,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
 }
 
 void exddx(dplan *d){
@@ -54,7 +53,7 @@ void exddx(dplan *d){
 
   #pragma GCC ivdep
   while(i-->0){
-     d->dy[i]*=WEIGHTS[i];
+     d->yout[i]*=WEIGHTS[i];
   }  
 }
 
@@ -79,7 +78,7 @@ void exddxl(dplan *d){
 
   #pragma GCC ivdep
   while(i-->0){
-     d->dy[i]*=WEIGHTS[i];
+     d->yout[i]*=WEIGHTS[i];
   }  
 }
 
@@ -95,7 +94,7 @@ void exint(dplan *d){
 
   #pragma GCC ivdep
   while(i-->0){
-    d->y[i]*=IWEIGHTS[i]; // note: input is destroyed. don't think we care.
+    d->yin[i]*=IWEIGHTS[i]; // note: input is destroyed. don't think we care.
   }
       
   fftw_execute(d->p[0]);

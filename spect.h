@@ -1,9 +1,10 @@
+#include <fftw3.h>
 #define N 32
 
 #pragma once
 typedef struct dplan{
-  double * y; //input
-  double * dy; //output
+  double * yin; //input
+  double * yout; //output
   fftw_plan p[2]; //plans for transforming
   double b; //boundary condition
 } dplan;
