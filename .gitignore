@@ -14,9 +14,5 @@
 # Backup files
 *~
 
-# Profile files
-*.gcda
-*.dyn
-
 # x86 files
 *.s
