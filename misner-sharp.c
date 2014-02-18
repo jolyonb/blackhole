@@ -15,7 +15,6 @@ typedef struct state {
   /* double r[N]; */
   /* double m[N]; */
   dynvar umr;
-  dynvar umra;
   double gamma2[N]; // gamma^2
   double rho[N];
   double phi[N];
@@ -28,51 +27,56 @@ typedef struct state {
   //dplan rDiff;
   //dplan rDiffa;
   dplan rhoDiff;
-  dplan phiInt;
+  //  dplan phiInt;
   //dplan mDiff;
+
+  //  double l; //b-a
 } state;
+
+static dynvar K1; //memory for integrator.
 
 void msSetup(state *s){
   mkwi();
   s->umr.rDiff.yin=s->umr.r;
   s->umr.rDiff.yout=s->dr;
-  s->umra.rDiff.yin=s->umra.r;
-  s->umra.rDiff.yout=s->dr;
+  K1.rDiff.yin=K1.r;
+  K1.rDiff.yout=s->dr;
   s->rhoDiff.yin=s->rho;
   s->rhoDiff.yout=s->drho;
-  s->phiInt.yin=s->phi;
-  s->phiInt.yout=s->phi;
+  //s->phiInt.yin=s->phi;
+  //s->phiInt.yout=s->phi;
   s->umr.mDiff.yin=s->umr.m;
   s->umr.mDiff.yout=s->rho; //yess, this is hacky. I think it'll be okay.
-  s->umra.mDiff.yin=s->umra.m;
-  s->umra.mDiff.yout=s->rho;
+  K1.mDiff.yin=K1.m;
+  K1.mDiff.yout=s->rho;
   plddx(&s->umr.rDiff);
-  plddx(&s->umra.rDiff);
+  plddx(&K1.rDiff);
   plddx(&s->rhoDiff);
-  plint(&s->phiInt);
+  //  plint(&s->phiInt);
   plddx(&s->umr.mDiff);
-  plddx(&s->umra.mDiff);
+  plddx(&K1.mDiff);
 }
   
 //Equations of motion.
 
-inline static double dudt(double phi, double r, double dr, double gamma2, double rho, double drho, double m){
+inline double dudt(double phi, double r, double dr, double gamma2, double rho, double drho, double m){
   return -1*exp(phi)*(gamma2*r*r*drho/(dr*4*rho)+m/(r*r)+4*M_PI*r*rho/3);
 }
 
-inline static double drdt(double phi, double u){
+inline double drdt(double phi, double u){
   return exp(phi)*u;
 }
 
-inline static double dmdt(double phi, double rho, double r, double u){
+inline double dmdt(double phi, double rho, double r, double u){
   return -1*exp(phi)*4*M_PI*rho*r*r*u/3;
 }
 
-inline static double gam2(double u, double m, double r){
+inline double gam2(double u, double m, double r){
+  //returns \Gamma ^ 2
   return 1+u*u-(2*m)/r;
 }
 
-inline static double rho(double r, double dr, double dm){
+inline double rho(double r, double dr, double dm){
   return dm/(4*M_PI*r*r*dr);
 }
 
@@ -127,7 +131,7 @@ static void ev(const state * restrict s1, const dynvar * restrict umrin, dynvar 
 static void update(state * restrict s, dynvar * restrict umr){
   // runs the equations which are not time derivatives
   
-  //double dphi[N];
+  double phiN;
   int i;
 
   i=N;
@@ -150,18 +154,26 @@ static void update(state * restrict s, dynvar * restrict umr){
   s->rhoDiff.b=0; //TODO: b.c.
   exddx(&s->rhoDiff);
 
-  i=N;while(i-->0){
-    s->phi[i]=s->drho[i]/(-4*s->rho[i]);
-  }
+  //integrating
+  /* i=N;while(i-->0){ */
+  /*   s->phi[i]=s->drho[i]/(-4*s->rho[i]); */
+  /* } */
 
-  s->phiInt.b=0; //TODO: b.c.
-  exint(&s->phiInt);
+  /* s->phiInt.b=0; //TODO: b.c. */
+  /* exint(&s->phiInt); */
+
+  i=N; while(i-->0){
+    s->phi[i]=log(s->rho[i])/(-4);//b.c. still needs to happen.
+  }
 }
 
 void msStep(state *s, double dt){  
-  ev(s,&s->umr,&s->umra,.5*dt);
-  update(s,&s->umra);
-  ev(s,&s->umra,&s->umr,dt);
+  update(s,&s->umr);
+  ev(s,&s->umr,&K1,.5*dt);
+  update(s,&K1);
+  ev(s,&K1,&s->umr,dt);
+  //  update(s,&s->umr);
+  //Only need to rescale U,m,R on the fly. the rest will be updated in the next pass.
 }
 
 void msInit(){
