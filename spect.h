@@ -1,7 +1,9 @@
+#ifndef SPECT_H
+#define SPECT_H
+
 #include <fftw3.h>
 #define N 32
 
-#pragma once
 typedef struct dplan{
   double * yin; //input
   double * yout; //output
@@ -9,10 +11,21 @@ typedef struct dplan{
   double b; //boundary condition
 } dplan;
 
+typedef struct flyplan{
+  double * y;
+  fftw_plan p;
+  int n;
+} flyplan;
+
 void mkwi();
 
-void plddx(dplan *d);
-void plint(dplan *d);
-void exddx(dplan *d);
-void exddxl(dplan *d);
-void exint(dplan *d);
+void plddx(dplan *);
+void plint(dplan *);
+void exddx(dplan *);
+void exddxl(dplan *);
+void exint(dplan *);
+
+void plfly(flyplan *);
+void exfly(flyplan *,double,double);
+
+#endif
