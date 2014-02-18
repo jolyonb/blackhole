@@ -125,34 +125,34 @@ void exfly(flyplan *f ,double left, double right){
   double a0;
   int i,j,k;
 
-  j=N;while(j-->0){
+  j=N; while(j-->0){
     x[j]=-(.5*(right-left)*X[j]+.5*(right+left));
   }
   
   fftw_execute(f->p);
+
   k=f->n; while(k-->0){
-    j=N;while(j-->0){      
+    j=N; while(j-->0){
       // b[1][j]=a[N-1];
       b[0][j]=a[N-2]+2*x[j]*a[N-1];
-       b[1][j]=a[N-3]+2*x[j]*b[0][j]-a[N-1];
+      b[1][j]=a[N-3]+2*x[j]*b[0][j]-a[N-1];
     }
+
     //i=(N-4)/2; while(i-->0){
-    i=N-3; while(i-->1){      
+    i=N-3; while(i-->1){
       j=N; while(j-->0){
 	b[i&1][j]=a[i]+2*x[j]*b[(i+1)&1][j]-b[i&1][j];
 
 	//b[0][j]=a[i*2+2]+2*x[j]*b[1][j]-b[0][j];
-	//	b[1][j]=a[i*2+1]+2*x[j]*b[0][j]-b[1][j];
+	//b[1][j]=a[i*2+1]+2*x[j]*b[0][j]-b[1][j];
       }
     }
 
     a0=a[0];
 
     j=N; while(j-->0){
-      a[j]=(a0/2+x[j]*b[1][j]-b[0][j])/N; //might need a factor of 2 on a[0].
+      a[j]=(a0/2+x[j]*b[1][j]-b[0][j])/N;
     }
     a+=N;
   }
 }
-  
-  
