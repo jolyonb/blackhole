@@ -1,9 +1,10 @@
-CC=icc
 
-ifeq ($(CC),gcc)
-	CFLAGS=-Ofast -flto -march=native -lfftw3 -lm -std=gnu99 -fprofile-dir=profiling
-else
+ifeq ($(USER),face)
+	CC=icc
 	CFLAGS=-align -Ofast -ipo -march=native -lfftw3 -restrict -vec-report=2 -prof-dir=profiling
+else
+	CC=gcc
+	CFLAGS=-Ofast -flto -march=native -lfftw3 -lm -std=gnu99 -fprofile-dir=profiling
 endif
 
 default: test
