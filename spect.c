@@ -100,7 +100,7 @@ void exddx(dplan *d){
   }
 
   TY[N]=-(b-(d->yin[N]-d->yin[0])/4)/(N*N); //This might be assuming N is even. It probably should be anyway.
-  TY[0]=(a-2*(TY[N]-TY[1]));
+  TY[0]=(a-(TY[N]-2*TY[1]));
 
   fftw_execute(d->p[1]);
 
@@ -133,7 +133,7 @@ void exddx(dplan *d){
   }
 
   TY[N]=-(b-(d->yin[N]-d->yin[0])/4)/(N*N); //This might be assuming N is even. It probably should be anyway.
-  TY[0]=(a-2*(TY[N]+TY[1]));
+  TY[0]=(a-(TY[N]+2*TY[1]));
 
   fftw_execute(d->p[1]);
 }
