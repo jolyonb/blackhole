@@ -14,6 +14,7 @@
 # Backup files
 *~
 
+<<<<<<< HEAD
 # x86 files
 *.s
 
@@ -22,3 +23,5 @@
 *.dyn
 *.dpi
 *.dpi.lock
+=======
+>>>>>>> 19a0dae1711952d59f0bac2de2d5938a5921ec33
