@@ -21,7 +21,9 @@ void mkwi();
 void plddx(dplan *);
 void plint(dplan *);
 void exddx(dplan *);
-void exint(dplan *);
+void exintl(dplan *, double);
+void exintr(dplan *, double);
+//void exint(dplan *);
 
 void plfly(flyplan *);
 void exfly(flyplan *,double,double);

@@ -68,12 +68,49 @@ void exddx(dplan *d){
 
   #pragma GCC ivdep
   i=N; while(i-->1){
-  //for(i=0;i<N;i++){
-     d->yout[i]*=WEIGHTS[i];
+    //for(i=0;i<N;i++){
+    d->yout[i]*=WEIGHTS[i];
   }
 }
 
-void exint(dplan *d){
+  void exintr(dplan *d, double a){
+  // executes a planed integration using the reverse of the technique in exddx. Currently destroys data in yin. Perhaps this can be avoided with some fourier identity magic and a multiplication at the end instead of the begining.
+
+  int i;
+  double b=0;
+
+  #pragma GCC ivdep
+  i=N; while(i-->1){
+  //for(i=0;i<N;i++){
+     d->yin[i]*=IWEIGHTS[i]; // note: input is destroyed. don't think we care.
+  }
+
+  fftw_execute(d->p[0]);
+
+  /* i=N/2;while(i-->1){ */
+  /*   b+=(2*i)*TY[2*i]; */
+  /* } */
+
+  #pragma GCC ivdep
+  i=N; while(i-->2){
+    //  for(i=2;i<N+1;i++){
+    b+=(i)*TY[i]*(1-(i&1));
+    TY[i]/=i;
+    a+=2*TY[i]*(2*(i&1)-1);
+  }
+
+  TY[N]=-(b-(d->yin[N]-d->yin[0])/4)/(N*N); //This might be assuming N is even. It probably should be anyway.
+  TY[0]=(a-2*(TY[N]-TY[1]));
+
+  fftw_execute(d->p[1]);
+
+  /* a-=d->yout[N]; */
+  /* i=N+1;while(i-->0){ */
+  /*   d->yout[i]+=a; */
+  /* } */
+}
+
+  void exintl(dplan *d, double a){
   // executes a planed integration using the reverse of the technique in exddx. Currently destroys data in yin. Perhaps this can be avoided with some fourier identity magic and a multiplication at the end instead of the begining.
 
   int i;
@@ -87,16 +124,16 @@ void exint(dplan *d){
       
   fftw_execute(d->p[0]);
 
-#pragma GCC ivdep
+  #pragma GCC ivdep
   i=N; while(i-->2){
   //  for(i=2;i<N+1;i++){
-  b+=(i)*TY[i]*(1-(i&1));
-  TY[i]/=i;
-}
-  printf("%f\t%f\t%f\n",d->yin[N],b,(d->yin[N] - d->yin[0])); 
+    b+=(i)*TY[i]*(1-(i&1));
+    TY[i]/=i;
+    a+=-2*TY[i];
+  }
 
   TY[N]=-(b-(d->yin[N]-d->yin[0])/4)/(N*N); //This might be assuming N is even. It probably should be anyway.
-  TY[0]=0.0;//Needs to be set by integration constant... Perhaps will want two for left/right.
+  TY[0]=(a-2*(TY[N]+TY[1]));
 
   fftw_execute(d->p[1]);
 }
