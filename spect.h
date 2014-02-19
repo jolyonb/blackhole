@@ -1,33 +1,31 @@
-#define N 32
+#ifndef SPECT_H
+#define SPECT_H
+
+#include <fftw3.h>
+#define N 32  //N.B. N+1 is the number of data points. N should probably be a power of two. at the very least, even.
 
 typedef struct dplan{
-  double * y;
-  double * dy;
-  fftw_plan p[2];
-  double b;
+  double * yin; //input
+  double * yout; //output
+  fftw_plan p[2]; //plans for transforming
 } dplan;
+
+typedef struct flyplan{
+  double * y;
+  fftw_plan p;
+  int n;
+} flyplan;
 
 void mkwi();
 
-void plddx(dplan *d);
-void plint(dplan *d);
-void exddx(dplan *d);
-void exint(dplan *d);
+void plddx(dplan *);
+void plint(dplan *);
+void exddx(dplan *);
+void exintl(dplan *, double);
+void exintr(dplan *, double);
+//void exint(dplan *);
 
-/* void plintdi(dplan *d); */
-/* void exintdi(dplan *d); */
+void plfly(flyplan *);
+void exfly(flyplan *,double,double);
 
-
-/* void plddxm(double *y, double *ty, double *dy, int n, fftw_plan *p1, fftw_plan *p2); */
-
-/* void exddxm(double * restrict ty, double * restrict dy, double * restrict b, const int n, const fftw_plan p1, const fftw_plan p2); */
-
-
-
-/* void plddx(double *y, double *ty, double *dy, fftw_plan *p1, fftw_plan *p2); */
-
-/* void exddx(double * restrict ty, double * restrict dy, double b, const fftw_plan p1, const fftw_plan p2); */
-
-/* void plint(double *y, double *ty, double *iy, fftw_plan *p1, fftw_plan *p2); */
-
-/* void exint(double * restrict ty, double *restrict y, double * restrict iy, double b, const fftw_plan p1, const fftw_plan p2); */
+#endif
