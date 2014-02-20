@@ -1,10 +1,13 @@
 #include <math.h>
+#include <cblas.h>
 #include "spect.h"
+
 
 static double X[N+1];
 static double WEIGHTS[N+1];
 static double IWEIGHTS[N+1];
 static double TY[N+1];
+static double REBASEM[N+1][N+1];
 
 void mkwi(){
   int i=N+1; while(i-->0){
@@ -26,7 +29,6 @@ void plddx(dplan *d){
 void plint(dplan *d){
   // plint plans an integration operation on d->yin to output to d->yout.
   
-  //TY[N]=0;
   const fftw_r2r_kind t[]={FFTW_RODFT00,FFTW_REDFT00};
   d->p[0]=fftw_plan_r2r_1d(N-1,d->yin+1,TY+1,t[0],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
   d->p[1]=fftw_plan_r2r_1d(N+1,TY,d->yout,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
@@ -35,9 +37,24 @@ void plint(dplan *d){
 void plfly(flyplan *f){
   const fftw_r2r_kind t[]={FFTW_REDFT00};
   const int n[]={N+1};
+  const int e[]={N+2};
   f->p=fftw_plan_many_r2r(1,n,f->n,f->y,NULL,1,N+1,f->y,NULL,1,N+1,t,FFTW_EXHAUSTIVE);
-  //  f->p=fftw_plan_r2r_1d(N,f->y,f->y,t[0],FFTW_EXHAUSTIVE);
 }
+
+void plrebase(double a){
+  int i,j;
+  flyplan fpl;
+  fpl.y=&REBASEM[0][0];
+  fpl.n=N+1;
+  plfly(&fpl);
+  i=N+1;while(i-->0){
+    j=N+1;while(j-->0){
+      REBASEM[i][j]=i==j?1:0;
+    }
+  }
+  exfly(&fpl,1-2*a,1);
+}
+
 
 void exddx(dplan *d){
   // executes a planed differentiation using:
@@ -153,13 +170,13 @@ void exfly(flyplan *f ,double left, double right){
 
   k=f->n; while(k-->0){
     j=N+1; while(j-->0){
-      // b[1][j]=a[N-1];
-      b[0][j]=a[N-2]+2*x[j]*a[N-1];
-      b[1][j]=a[N-3]+2*x[j]*b[0][j]-a[N-1];
+      // b[1][j]=.5*a[N-1]; //because extremal grid weirdness
+      b[1][j]=a[N-1]+1*x[j]*a[N];
+      b[0][j]=a[N-2]+2*x[j]*b[1][j]-.5*a[N];
     }
 
     //i=(N-4)/2; while(i-->0){
-    i=N-3; while(i-->1){
+    i=N-2; while(i-->1){
       j=N+1; while(j-->0){
 	b[i&1][j]=a[i]+2*x[j]*b[(i+1)&1][j]-b[i&1][j];
 
@@ -173,6 +190,14 @@ void exfly(flyplan *f ,double left, double right){
     j=N+1; while(j-->0){
       a[j]=(a0/2+x[j]*b[1][j]-b[0][j])/N;
     }
-    a+=N;
+    a+=N+1;
   }
+}
+
+void exrebase(double *y){
+  double x[N+1];
+  int i=N+1; while(i-->0){
+    x[i]=y[i];
+  }
+  cblas_dgemv(CblasColMajor,CblasNoTrans,N+1,N+1,1,&REBASEM[0][0],N+1,x,1,0,y,1);
 }

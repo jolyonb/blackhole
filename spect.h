@@ -28,4 +28,7 @@ void exintr(dplan *, double);
 void plfly(flyplan *);
 void exfly(flyplan *,double,double);
 
+void plrebase(double);
+void exrebase(double *);
+
 #endif
