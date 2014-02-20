@@ -1,16 +1,18 @@
 
 ifeq ($(USER),face)
 	CC=icc
-	CFLAGS=-align -Ofast -ipo -march=native -lfftw3 -restrict -vec-report=2 -prof-dir=profiling
+	CFLAGS=-align -Ofast -ipo -march=native -restrict -vec-report=2 -prof-dir=profiling
+	LIBS=-lfftw3 -mkl
 else
 	CC=gcc
-	CFLAGS=-Ofast -flto -march=native -lfftw3 -lm -std=gnu99 -fprofile-dir=profiling
+	CFLAGS=-Ofast -flto -march=native -std=gnu99 -fprofile-dir=profiling
+	LIBS=-lfftw3 -lcblas -lm
 endif
 
 default: test
 
 test: spect.o test.c
-	$(CC) $(CFLAGS) spect.o test.c
+	$(CC) $(CFLAGS) spect.o test.c $(LIBS)
 
 misner-sharp.o: misner-sharp.c
 	$(CC) $(CFLAGS) -c misner-sharp.c
