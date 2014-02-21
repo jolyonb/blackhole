@@ -8,6 +8,15 @@ static double WEIGHTS[N+1];
 static double IWEIGHTS[N+1];
 static double TY[N+1];
 static double REBASEM[N+1][N+1];
+static double DDXM[N+1][N+1];
+static double INTM[N+1][N+1];
+
+void spectSetup(double a){
+  mkwi();
+  plddxm();
+  plintm();
+  plrebase(a);
+}
 
 void mkwi(){
   int i=N+1; while(i-->0){
@@ -39,6 +48,35 @@ void plfly(flyplan *f){
   const int n[]={N+1};
   const int e[]={N+2};
   f->p=fftw_plan_many_r2r(1,n,f->n,f->y,NULL,1,N+1,f->y,NULL,1,N+1,t,FFTW_EXHAUSTIVE);
+}
+
+void plddxm(){
+  int i,j;
+  dplan ddx;
+  //for(i=0;i<N;i++){
+  i=N+1;while(i-->0){
+    ddx.yin=DDXM[i];
+    ddx.yout=DDXM[i];
+    plddx(&ddx);
+    j=N+1;while(j-->0){
+      DDXM[i][j]=i==j?1:0;
+    }
+    exddx(&ddx);
+  }
+}
+
+void plintm(){
+  int i,j;
+  dplan xdd;
+  i=N+1;while(i-->0){
+    xdd.yin=INTM[i];
+    xdd.yout=INTM[i];
+    plint(&xdd);
+    j=N+1;while(j-->0){
+      INTM[i][j]=i==j?1:0;
+    }
+    exintl(&xdd,0);
+  }
 }
 
 void plrebase(double a){
@@ -90,7 +128,7 @@ void exddx(dplan *d){
   }
 }
 
-  void exintr(dplan *d, double a){
+void exintr(dplan *d, double a){
   // executes a planed integration using the reverse of the technique in exddx. Currently destroys data in yin. Perhaps this can be avoided with some fourier identity magic and a multiplication at the end instead of the begining.
 
   int i;
@@ -144,12 +182,15 @@ void exddx(dplan *d){
   #pragma GCC ivdep
   i=N; while(i-->2){
   //  for(i=2;i<N+1;i++){
-    b+=(i)*TY[i]*(1-(i&1));
+    b+=(i)*TY[i]*(1-(N+i&1));
     TY[i]/=i;
     a+=-2*TY[i];
   }
 
-  TY[N]=-(b-(d->yin[N]-d->yin[0])/4)/(N*N); //This might be assuming N is even. It probably should be anyway.
+  b+=TY[1]*(N&1);
+
+  //  TY[N]=-(b-(d->yin[N]-d->yin[0])/4)/(N*N); //This might be assuming N is even. It probably should be anyway.
+  TY[N]=(-2)*(b+((2*(1&N)-1)*d->yin[N]+d->yin[0])/4)/(N*N);
   TY[0]=(a-(TY[N]+2*TY[1]));
 
   fftw_execute(d->p[1]);
@@ -194,10 +235,18 @@ void exfly(flyplan *f ,double left, double right){
   }
 }
 
+void intm(double *y, double *dy){
+  cblas_dgemv(CblasRowMajor,CblasTrans,N+1,N+1,1,INTM[0],N+1,y,1,0,dy,1);
+}
+
+void ddx(double *y, double *dy){
+  cblas_dgemv(CblasRowMajor,CblasTrans,N+1,N+1,1,DDXM[0],N+1,y,1,0,dy,1);
+}
+
 void exrebase(double *y){
   double x[N+1];
   int i=N+1; while(i-->0){
     x[i]=y[i];
   }
-  cblas_dgemv(CblasColMajor,CblasNoTrans,N+1,N+1,1,&REBASEM[0][0],N+1,x,1,0,y,1);
+  cblas_dgemv(CblasRowMajor,CblasTrans,N+1,N+1,1,&REBASEM[0][0],N+1,x,1,0,y,1);
 }
