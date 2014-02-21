@@ -189,6 +189,12 @@ void exintr(dplan *d, double a){
 
   b+=TY[1]*(N&1);
 
+<<<<<<< HEAD
+=======
+
+  printf("%f\n",b);
+
+>>>>>>> 6c471b9369381f6bffb6b6acaa1d3f63d2c13d5e
   //  TY[N]=-(b-(d->yin[N]-d->yin[0])/4)/(N*N); //This might be assuming N is even. It probably should be anyway.
   TY[N]=(-2)*(b+((2*(1&N)-1)*d->yin[N]+d->yin[0])/4)/(N*N);
   TY[0]=(a-(TY[N]+2*TY[1]));
