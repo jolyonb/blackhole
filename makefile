@@ -6,7 +6,7 @@ ifeq ($(USER),face)
 else
 	CC=gcc
 	CFLAGS=-Ofast -flto -march=native -std=gnu99 -fprofile-dir=profiling
-	LIBS=-lfftw3 -lcblas -lm
+	LIBS=-lfftw3 -lblas -lm
 endif
 
 default: test

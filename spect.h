@@ -4,6 +4,7 @@
 #include <fftw3.h>
 #define N 32  //N.B. N+1 is the number of data points. N should probably be a power of two. at the very least, even.
 
+/*
 typedef struct dplan{
   double * yin; //input
   double * yout; //output
@@ -27,8 +28,16 @@ void exintr(dplan *, double);
 
 void plfly(flyplan *);
 void exfly(flyplan *,double,double);
+*/
+void spectSetup(double);
 
-void plrebase(double);
-void exrebase(double *);
+//void plddxm();
+//void plintm();
+
+void ddxm(double *, double *);
+void intm(double *, double *);
+
+//void plrebase(double);
+void rebasem(double *);
 
 #endif

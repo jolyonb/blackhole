@@ -1,5 +1,4 @@
 #include <math.h>
-#include <cblas.h>
 #include "spect.h"
 
 
@@ -11,14 +10,24 @@ static double REBASEM[N+1][N+1];
 static double DDXM[N+1][N+1];
 static double INTM[N+1][N+1];
 
-void spectSetup(double a){
-  mkwi();
-  plddxm();
-  plintm();
-  plrebase(a);
-}
+extern void dgemv_(char *, int *, int *, double *, double *, int *, double *, int *, double *, double *, int *);
+extern void dcopy_(int *, double *, int *, double *, int *);
 
-void mkwi(){
+typedef struct dplan{
+  double * yin; //input
+  double * yout; //output
+  fftw_plan p[2]; //plans for transforming
+} dplan;
+
+typedef struct flyplan{
+  double * y;
+  fftw_plan p;
+  int n;
+} flyplan;
+
+
+
+static void mkwi(){
   int i=N+1; while(i-->0){
     //  for(i=0;i<N;i++){
     X[i]=-cos(M_PI*i/N);
@@ -27,7 +36,7 @@ void mkwi(){
   }
 }
 
-void plddx(dplan *d){
+static void plddx(dplan *d){
   // plddx plans a differentiation operation on the data stored at d->yin to output to d->yout.
 
   const fftw_r2r_kind t[]={FFTW_REDFT00,FFTW_RODFT00};
@@ -35,7 +44,7 @@ void plddx(dplan *d){
   d->p[1]=fftw_plan_r2r_1d(N-1,TY+1,d->yout+1,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
 }
 
-void plint(dplan *d){
+static void plint(dplan *d){
   // plint plans an integration operation on d->yin to output to d->yout.
   
   const fftw_r2r_kind t[]={FFTW_RODFT00,FFTW_REDFT00};
@@ -43,58 +52,14 @@ void plint(dplan *d){
   d->p[1]=fftw_plan_r2r_1d(N+1,TY,d->yout,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
 }
 
-void plfly(flyplan *f){
+static void plfly(flyplan *f){
   const fftw_r2r_kind t[]={FFTW_REDFT00};
   const int n[]={N+1};
   const int e[]={N+2};
   f->p=fftw_plan_many_r2r(1,n,f->n,f->y,NULL,1,N+1,f->y,NULL,1,N+1,t,FFTW_EXHAUSTIVE);
 }
 
-void plddxm(){
-  int i,j;
-  dplan ddx;
-  //for(i=0;i<N;i++){
-  i=N+1;while(i-->0){
-    ddx.yin=DDXM[i];
-    ddx.yout=DDXM[i];
-    plddx(&ddx);
-    j=N+1;while(j-->0){
-      DDXM[i][j]=i==j?1:0;
-    }
-    exddx(&ddx);
-  }
-}
-
-void plintm(){
-  int i,j;
-  dplan xdd;
-  i=N+1;while(i-->0){
-    xdd.yin=INTM[i];
-    xdd.yout=INTM[i];
-    plint(&xdd);
-    j=N+1;while(j-->0){
-      INTM[i][j]=i==j?1:0;
-    }
-    exintl(&xdd,0);
-  }
-}
-
-void plrebase(double a){
-  int i,j;
-  flyplan fpl;
-  fpl.y=&REBASEM[0][0];
-  fpl.n=N+1;
-  plfly(&fpl);
-  i=N+1;while(i-->0){
-    j=N+1;while(j-->0){
-      REBASEM[i][j]=i==j?1:0;
-    }
-  }
-  exfly(&fpl,1-2*a,1);
-}
-
-
-void exddx(dplan *d){
+static void exddx(dplan *d){
   // executes a planed differentiation using:
   // y = sum(a_n T_n(x)) = sum(a_n cos(n \theta)
   //   => y' = sum(a_n n sin(n \theta) / sin(\theta))
@@ -114,8 +79,8 @@ void exddx(dplan *d){
   a/=-N;
   b/=-N;
   
-  a+=-N*TY[N];
-  b+=-N*TY[N]*(2*(N&1)-1); 
+  a+=-N*.5*TY[N];
+  b+=-N*.5*TY[N]*(2*(N&1)-1); 
   d->yout[0]=a;
   d->yout[N]=b;
   
@@ -128,7 +93,7 @@ void exddx(dplan *d){
   }
 }
 
-void exintr(dplan *d, double a){
+static void exintr(dplan *d, double a){
   // executes a planed integration using the reverse of the technique in exddx. Currently destroys data in yin. Perhaps this can be avoided with some fourier identity magic and a multiplication at the end instead of the begining.
 
   int i;
@@ -165,7 +130,7 @@ void exintr(dplan *d, double a){
   /* } */
 }
 
-  void exintl(dplan *d, double a){
+static void exintl(dplan *d, double a){
   // executes a planed integration using the reverse of the technique in exddx. Currently destroys data in yin. Perhaps this can be avoided with some fourier identity magic and a multiplication at the end instead of the begining.
 
   int i;
@@ -196,7 +161,7 @@ void exintr(dplan *d, double a){
   fftw_execute(d->p[1]);
 }
 
-void exfly(flyplan *f ,double left, double right){
+static void exfly(flyplan *f ,double left, double right){
   double x[N+1];
   double *a=f->y;
   double b[2][N+1]; 
@@ -235,18 +200,76 @@ void exfly(flyplan *f ,double left, double right){
   }
 }
 
-void intm(double *y, double *dy){
-  cblas_dgemv(CblasRowMajor,CblasTrans,N+1,N+1,1,INTM[0],N+1,y,1,0,dy,1);
-}
-
-void ddx(double *y, double *dy){
-  cblas_dgemv(CblasRowMajor,CblasTrans,N+1,N+1,1,DDXM[0],N+1,y,1,0,dy,1);
-}
-
-void exrebase(double *y){
-  double x[N+1];
-  int i=N+1; while(i-->0){
-    x[i]=y[i];
+static void plddxm(){
+  int i,j;
+  dplan ddx;
+  //for(i=0;i<N;i++){
+  i=N+1;while(i-->0){
+    ddx.yin=DDXM[i];
+    ddx.yout=DDXM[i];
+    plddx(&ddx);
+    j=N+1;while(j-->0){
+      DDXM[i][j]=i==j?1:0;
+    }
+    exddx(&ddx);
   }
-  cblas_dgemv(CblasRowMajor,CblasTrans,N+1,N+1,1,&REBASEM[0][0],N+1,x,1,0,y,1);
+}
+
+static void plintm(){
+  int i,j;
+  dplan xdd;
+  i=N+1;while(i-->0){
+    xdd.yin=INTM[i];
+    xdd.yout=INTM[i];
+    plint(&xdd);
+    j=N+1;while(j-->0){
+      INTM[i][j]=i==j?1:0;
+    }
+    exintl(&xdd,0);
+  }
+}
+
+static void plrebase(double a){
+  int i,j;
+  flyplan fpl;
+  fpl.y=&REBASEM[0][0];
+  fpl.n=N+1;
+  plfly(&fpl);
+  i=N+1;while(i-->0){
+    j=N+1;while(j-->0){
+      REBASEM[i][j]=i==j?1:0;
+    }
+  }
+  exfly(&fpl,1-2*a,1);
+}
+
+void spectSetup(double a){
+  //sets up doing spectral method things. a is the ratio of the rebasing.
+  mkwi();
+  plddxm();
+  plintm();
+  plrebase(a);
+}
+
+void intm(double *y, double *dy){
+  //integrates y from left boundary, outputs to dy.
+  int n[]={N+1,1};
+  double a[]={1.0,0.0};
+  dgemv_("n",n,n,a,&INTM[0][0],n,y,n+1,a+1,dy,n+1);
+}
+
+void ddxm(double *y, double *dy){
+  //takes derivative of y, outputs to dy
+  int n[]={N+1,1};
+  double a[]={1.0,0.0};
+  dgemv_("n",n,n,a,&DDXM[0][0],n,y,n+1,a+1,dy,n+1);
+}
+
+void rebasem(double *y){
+  //takes y and rebases it on a smaller domain.
+  double x[N+1];
+  int n[]={N+1,1};
+  double a[]={1.0,0.0};
+  dcopy_(n,y,n+1,x,n+1);
+  dgemv_("n",n,n,a,&REBASEM[0][0],n,x,n+1,a+1,y,n+1);
 }
