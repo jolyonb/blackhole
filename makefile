@@ -22,7 +22,7 @@ misner-sharp.s: misner-sharp.c
 	$(CC) $(CFLAGS) -S -masm=intel misner-sharp.c
 
 spect.o: spect.c
-	$(CC) $(CFLAGS) -O2 -c spect.c
+	$(CC) $(CFLAGS) -Ofast -c spect.c
 
 spect.s: spect.c
 	$(CC) $(CFLAGS) -O2 -S -masm=intel spect.c
