@@ -1,7 +1,6 @@
 #ifndef SPECT_H
 #define SPECT_H
 
-#include <fftw3.h>
 #define N 32  //N.B. N+1 is the number of data points.
 
 void spectSetup(double);

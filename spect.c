@@ -1,4 +1,5 @@
 #include <math.h>
+#include <fftw3.h>
 #include "spect.h"
 
 
