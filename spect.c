@@ -2,10 +2,6 @@
 #include "spect.h"
 
 
-static double X[N+1];
-static double WEIGHTS[N+1];
-static double IWEIGHTS[N+1];
-static double TY[N+1];
 static double REBASEM[N+1][N+1];
 static double DDXM[N+1][N+1];
 static double INTM[N+1][N+1];
@@ -16,6 +12,7 @@ extern void dcopy_(int *, double *, int *, double *, int *);
 typedef struct dplan{
   double * yin; //input
   double * yout; //output
+  double * ty; //temp
   fftw_plan p[2]; //plans for transforming
 } dplan;
 
@@ -27,12 +24,12 @@ typedef struct flyplan{
 
 
 
-static void mkwi(){
+static void mkwi(double *x){
   int i=N+1; while(i-->0){
     //  for(i=0;i<N;i++){
-    X[i]=-cos(M_PI*i/N);
-    WEIGHTS[i]=1/(-2*N*sin(M_PI*i/N));
-    IWEIGHTS[i]=sin(M_PI*i/N)/(-2*N);
+    x[i]=-cos(M_PI*i/N);
+    x[i+(N+1)]=1/(-2*N*sin(M_PI*i/N));
+    x[i+2*(N+1)]=sin(M_PI*i/N)/(-2*N);
   }
 }
 
@@ -40,29 +37,31 @@ static void plddx(dplan *d){
   // plddx plans a differentiation operation on the data stored at d->yin to output to d->yout.
 
   const fftw_r2r_kind t[]={FFTW_REDFT00,FFTW_RODFT00};
-  d->p[0]=fftw_plan_r2r_1d(N+1,d->yin,TY,t[0],FFTW_EXHAUSTIVE);
-  d->p[1]=fftw_plan_r2r_1d(N-1,TY+1,d->yout+1,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
+  d->p[0]=fftw_plan_r2r_1d(N+1,d->yin,d->ty,t[0],FFTW_ESTIMATE);
+  d->p[1]=fftw_plan_r2r_1d(N-1,d->ty+1,d->yout+1,t[1],FFTW_ESTIMATE);
 }
 
 static void plint(dplan *d){
   // plint plans an integration operation on d->yin to output to d->yout.
-  
+  double *TY=d->ty;
   const fftw_r2r_kind t[]={FFTW_RODFT00,FFTW_REDFT00};
-  d->p[0]=fftw_plan_r2r_1d(N-1,d->yin+1,TY+1,t[0],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
-  d->p[1]=fftw_plan_r2r_1d(N+1,TY,d->yout,t[1],FFTW_EXHAUSTIVE | FFTW_DESTROY_INPUT);
+  d->p[0]=fftw_plan_r2r_1d(N-1,d->yin+1,TY+1,t[0],FFTW_ESTIMATE);
+  d->p[1]=fftw_plan_r2r_1d(N+1,TY,d->yout,t[1],FFTW_ESTIMATE);
 }
 
 static void plfly(flyplan *f){
   const fftw_r2r_kind t[]={FFTW_REDFT00};
   const int n[]={N+1};
   const int e[]={N+2};
-  f->p=fftw_plan_many_r2r(1,n,f->n,f->y,NULL,1,N+1,f->y,NULL,1,N+1,t,FFTW_EXHAUSTIVE);
+  f->p=fftw_plan_many_r2r(1,n,f->n,f->y,NULL,1,N+1,f->y,NULL,1,N+1,t,FFTW_ESTIMATE);
 }
 
-static void exddx(dplan *d){
+static void exddx(dplan *d, double *x){
   // executes a planed differentiation using:
   // y = sum(a_n T_n(x)) = sum(a_n cos(n \theta)
   //   => y' = sum(a_n n sin(n \theta) / sin(\theta))
+  double *WEIGHTS = x+N+1;
+  double *TY=x+3*(N+1);
   
   double a,b=0;
   int i;
@@ -93,45 +92,11 @@ static void exddx(dplan *d){
   }
 }
 
-static void exintr(dplan *d, double a){
+static void exintl(dplan *d, double a, double *x){
   // executes a planed integration using the reverse of the technique in exddx. Currently destroys data in yin. Perhaps this can be avoided with some fourier identity magic and a multiplication at the end instead of the begining.
 
-  int i;
-  double b=0;
-
-  #pragma GCC ivdep
-  i=N; while(i-->1){
-  //for(i=0;i<N;i++){
-     d->yin[i]*=IWEIGHTS[i]; // note: input is destroyed. don't think we care.
-  }
-
-  fftw_execute(d->p[0]);
-
-  /* i=N/2;while(i-->1){ */
-  /*   b+=(2*i)*TY[2*i]; */
-  /* } */
-
-  #pragma GCC ivdep
-  i=N; while(i-->2){
-    //  for(i=2;i<N+1;i++){
-    b+=(i)*TY[i]*(1-(i&1));
-    TY[i]/=i;
-    a+=2*TY[i]*(2*(i&1)-1);
-  }
-
-  TY[N]=-(b-(d->yin[N]-d->yin[0])/4)/(N*N); //This might be assuming N is even. It probably should be anyway.
-  TY[0]=(a-(TY[N]-2*TY[1]));
-
-  fftw_execute(d->p[1]);
-
-  /* a-=d->yout[N]; */
-  /* i=N+1;while(i-->0){ */
-  /*   d->yout[i]+=a; */
-  /* } */
-}
-
-static void exintl(dplan *d, double a){
-  // executes a planed integration using the reverse of the technique in exddx. Currently destroys data in yin. Perhaps this can be avoided with some fourier identity magic and a multiplication at the end instead of the begining.
+  double *IWEIGHTS = x+2*(N+1);
+  double *TY = x+3*(N+1);
 
   int i;
   double b=0;
@@ -161,7 +126,8 @@ static void exintl(dplan *d, double a){
   fftw_execute(d->p[1]);
 }
 
-static void exfly(flyplan *f ,double left, double right){
+static void exfly(flyplan *f ,double left, double right, double *y){
+  double *X=y;
   double x[N+1];
   double *a=f->y;
   double b[2][N+1]; 
@@ -200,36 +166,38 @@ static void exfly(flyplan *f ,double left, double right){
   }
 }
 
-static void plddxm(){
+static void plddxm(double *x){
   int i,j;
   dplan ddx;
   //for(i=0;i<N;i++){
   i=N+1;while(i-->0){
     ddx.yin=DDXM[i];
     ddx.yout=DDXM[i];
+    ddx.ty=x+3*(N+1);
     plddx(&ddx);
     j=N+1;while(j-->0){
       DDXM[i][j]=i==j?1:0;
     }
-    exddx(&ddx);
+    exddx(&ddx,x);
   }
 }
 
-static void plintm(){
+static void plintm(double *x){
   int i,j;
   dplan xdd;
   i=N+1;while(i-->0){
     xdd.yin=INTM[i];
     xdd.yout=INTM[i];
+    xdd.ty=x+3*(N+1);
     plint(&xdd);
     j=N+1;while(j-->0){
       INTM[i][j]=i==j?1:0;
     }
-    exintl(&xdd,0);
+    exintl(&xdd,0,x);
   }
 }
 
-static void plrebase(double a){
+static void plrebase(double a, double *x){
   int i,j;
   flyplan fpl;
   fpl.y=&REBASEM[0][0];
@@ -240,15 +208,18 @@ static void plrebase(double a){
       REBASEM[i][j]=i==j?1:0;
     }
   }
-  exfly(&fpl,1-2*a,1);
+  exfly(&fpl,1-2*a,1,x);
 }
 
+
+/* Actual Functions worth Calling */
 void spectSetup(double a){
   //sets up doing spectral method things. a is the ratio of the rebasing.
-  mkwi();
-  plddxm();
-  plintm();
-  plrebase(a);
+  double x[(N+1)*4];
+  mkwi(x);
+  plddxm(x);
+  plintm(x);
+  plrebase(a,x);
 }
 
 void intm(double *y, double *dy){
