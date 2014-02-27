@@ -5,8 +5,8 @@
 
 void spectSetup(double);
 
-void ddxm(double *, double *);
-void intm(double *, double *);
+void ddxm(const double *, double *);
+void intm(const double *, double *);
 
 void rebasem(double *);
 

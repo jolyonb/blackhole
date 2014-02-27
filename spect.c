@@ -7,8 +7,8 @@ static double REBASEM[N+1][N+1];
 static double DDXM[N+1][N+1];
 static double INTM[N+1][N+1];
 
-extern void dgemv_(char *, int *, int *, double *, double *, int *, double *, int *, double *, double *, int *);
-extern void dcopy_(int *, double *, int *, double *, int *);
+extern void dgemv_(const char *, const int *, const int *, const double *, const double *, const int *, const double *, const int *, const double *, double *, const int *);
+extern void dcopy_(const int *, const double *, const int *, double *, const int *);
 
 typedef struct dplan{
   double * yin; //input
@@ -223,14 +223,14 @@ void spectSetup(double a){
   plrebase(a,x);
 }
 
-void intm(double *y, double *dy){
+void intm(const double *y, double *dy){
   //integrates y from left boundary, outputs to dy.
   int n[]={N+1,1};
   double a[]={1.0,0.0};
   dgemv_("n",n,n,a,&INTM[0][0],n,y,n+1,a+1,dy,n+1);
 }
 
-void ddxm(double *y, double *dy){
+void ddxm(const double *y, double *dy){
   //takes derivative of y, outputs to dy
   int n[]={N+1,1};
   double a[]={1.0,0.0};
