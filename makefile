@@ -1,13 +1,12 @@
 
 ifeq ($(USER),face)
 	CC=icc
-	CFLAGS=-align -Ofast -ipo -march=native -restrict -vec-report=2 -prof-dir=profiling
-	LIBS= -lfftw3 -lmkl_blas95_lp64 -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_sequential.a -Wl,--end-group
-#	LIBS=-lfftw3 -mkl
+	CFLAGS=-align -Ofast -ipo -march=native -restrict -vec-report=0 -prof-dir=profiling
+	LIBS= -lfftw3 -lgsl -lmkl_blas95_lp64 -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_sequential.a -Wl,--end-group
 else
 	CC=gcc
 	CFLAGS=-Ofast -flto -march=native -std=gnu99 -fprofile-dir=profiling
-	LIBS=-lfftw3 -lblas -lm
+	LIBS=-lfftw3 -lgsl -lblas -lgslcblas -lm
 endif
 
 default: test
