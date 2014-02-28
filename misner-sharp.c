@@ -1,183 +1,151 @@
 #include <math.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_odeiv2.h>
 #include "spect.h"
 
+#define M_PI_3 1.0471975511965977462
+
 typedef struct dynvar {
-  double u[N];
-  double r[N];
-  double m[N];
-  dplan rDiff;
-  dplan mDiff;
+  double u[N+1];//New u = U/R
+  double m[N+1];//New m= m/R^2
+  double r[N+1];
 } dynvar;
+
+typedef struct resvar {
+  double gamma2[N+1];
+  double rho[N+1];
+  double phi[N+1];
+
+  double dr[N+1];
+  double drho[N+1];
+} resvar;
 
 typedef struct state {
   //variables to track
-  /* double u[N]; */
-  /* double r[N]; */
-  /* double m[N]; */
-  dynvar umr;
-  double gamma2[N]; // gamma^2
-  double rho[N];
-  double phi[N];
+  dynvar umr; //dynamic variables.
+  resvar res;
 
-  //some derivatives
-  double dr[N];
-  double drho[N];
-
-  //derivative and integral plans
-  //dplan rDiff;
-  //dplan rDiffa;
-  dplan rhoDiff;
-  //  dplan phiInt;
-  //dplan mDiff;
-
-  //  double l; //b-a
+  double t;
 } state;
 
-static dynvar K1; //memory for integrator.
 
-void msSetup(state *s){
-  mkwi();
-  s->umr.rDiff.yin=s->umr.r;
-  s->umr.rDiff.yout=s->dr;
-  K1.rDiff.yin=K1.r;
-  K1.rDiff.yout=s->dr;
-  s->rhoDiff.yin=s->rho;
-  s->rhoDiff.yout=s->drho;
-  //s->phiInt.yin=s->phi;
-  //s->phiInt.yout=s->phi;
-  s->umr.mDiff.yin=s->umr.m;
-  s->umr.mDiff.yout=s->rho; //yess, this is hacky. I think it'll be okay.
-  K1.mDiff.yin=K1.m;
-  K1.mDiff.yout=s->rho;
-  plddx(&s->umr.rDiff);
-  plddx(&K1.rDiff);
-  plddx(&s->rhoDiff);
-  //  plint(&s->phiInt);
-  plddx(&s->umr.mDiff);
-  plddx(&K1.mDiff);
-}
-  
-//Equations of motion.
-
-inline double dudt(double phi, double r, double dr, double gamma2, double rho, double drho, double m){
-  return -1*exp(phi)*(gamma2*r*r*drho/(dr*4*rho)+m/(r*r)+4*M_PI*r*rho/3);
+/* */
+/* Equations of motion. */
+/* */
+inline static double dudt(const dynvar * restrict umr, const resvar * restrict s, int i){
+  return -1 * s->phi[i] * \
+    ( ( s->gamma2[i] * s->drho[i] ) / ( 4 * s->rho[i] * s->dr[i] * umr->r[i]) \
+      + umr->m[i] / umr->r[i] + 4 * M_PI_3 * s->rho[i] + umr->u[i] * umr->u[i] );
 }
 
-inline double drdt(double phi, double u){
-  return exp(phi)*u;
+inline static double dmdt(const dynvar * restrict umr, const resvar * restrict s, int i){
+  return -2 * s->phi[i] * umr-> u[i] * ( 2 * M_PI_3 * umr->r[i] * s->rho[i] + umr->m[i] );
 }
 
-inline double dmdt(double phi, double rho, double r, double u){
-  return -1*exp(phi)*4*M_PI*rho*r*r*u/3;
+inline static double drdt(const dynvar * restrict umr, const resvar * restrict s, int i){
+  return s->phi[i] * umr->u[i] * umr->r[i];
 }
 
-inline double gam2(double u, double m, double r){
-  //returns \Gamma ^ 2
-  return 1+u*u-(2*m)/r;
+inline static double rho(const dynvar * restrict umr, const resvar * restrict s, int i){
+  //M' is stored in rho when this is called.
+  return .25 * M_1_PI * ( s->rho[i] / s->dr[i] + 2 * umr->m[i] / umr->r[i]);
 }
 
-inline double rho(double r, double dr, double dm){
-  return dm/(4*M_PI*r*r*dr);
+inline static double gamma2(const dynvar * restrict umr, const resvar * restrict s, int i){
+  //returns \Gamma^2.
+  return 1 + umr->r[i] * ( umr->u[i] * umr->u[i] * umr->r[i] - 2 * umr->m[i]);
 }
 
-
-
-/* inline static double dudt(const state * restrict s, const dynvar * restrict umr, int i){ */
-/*   return -1 * exp(s->phi[i]) * \ */
-/*     (s->gamma2[i] * umr->r[i] * umr->r[i] * s->drho[i] / (4 * s->dr[i] * s->rho[i])\ */
-/*     + umr->m[i]/(umr->r[i] * umr->r[i]) + 4 * M_PI * umr->r[i] * s->rho[i] / 3); */
-/* } */
-
-/* inline static double drdt(const state * restrict s, const dynvar * restrict umr, int i){ */
-/*   return exp(s->phi[i]) * umr->u[i]; */
-/* } */
-
-/* inline static double dmdt(const state * restrict s, const dynvar * restrict umr, int i){ */
-/*   return -4 * M_PI * exp(s->phi[i]) * s->rho[i] * umr->r[i] * umr->r[i] * umr->u[i] / 3; */
-/* } */
-
-/* inline static double gam2(const dynvar * umr, int i){ */
-/*   return 1 + umr->u[i] * umr->u[i] - (2 * umr->m[i]) / umr->r[i]; */
-/* } */
-
-/* inline static double rho(const state * restrict s, const dynvar * restrict umr, int i){ */
-/*   return s->rho[i] / (4 * M_PI * umr->r[i] * umr->r[i] * s->dr[i]); //rho here is dm */
-/* } */
-
-static void ev(const state * restrict s1, const dynvar * restrict umrin, dynvar * restrict umrout, double dt){
-  // ev() evolves the time derivative equatinos.
-
-  // hm. might be worth putting u,r,m in their own struct.
-
-  int i;
-  double u5[N],r5[N];
-  double h;
-
-  i=N; while(i-->0){
-
-    h=dudt(s1->phi[i], umrin->r[i], s1->dr[i], s1->gamma2[i], s1->rho[i], s1->drho[i], umrin->m[i]);
-    u5[i] = s1->umr.u[i] + .5 * dt * h;
-    umrout->u[i] = s1->umr.u[i] + dt * h;
-    
-    h = drdt(s1->phi[i],u5[i]);
-    r5[i] = s1->umr.r[i] + .5 * dt * h;
-    umrout->r[i] = s1->umr.r[i] + dt * h;
-
-    h = dmdt(s1->phi[i],s1->rho[i],r5[i],u5[i]);
-    umrout->m[i] = s1->umr.m[i] + dt * h;
-  }
-}
-
-static void update(state * restrict s, dynvar * restrict umr){
+/*****/
+static void update(double t, const dynvar * restrict umr, resvar * restrict s){
   // runs the equations which are not time derivatives
   
-  double phiN;
+  double irhoFRW;
   int i;
 
-  i=N;
-  while(i-->0){
-    s->gamma2[i]=gam2(umr->u[i],umr->m[i],umr->r[i]);
+  i=N+1; while(i-->1){
+    s->gamma2[i]=gamma2(umr,s,i);
   }
-
-  //TODO: setting boundary conditions will have to happen in some fashion. Details TBD. (insert physics here as needed).
-  umr->rDiff.b=0; //TODO: b.c.
-  umr->mDiff.b=0; //TODO: b.c.
   
-  exddx(&umr->rDiff);
-  exddx(&umr->mDiff); //N.B. output is rho.
+  ddxm(umr->r,s->dr);  
+  ddxm(umr->m,s->rho);
   
-  i=N;while(i-->0){
-    s->rho[i]=rho(umr->r[i],s->dr[i],s->rho[i]);
-    //s->rho[i]=rho(s,i);
+  i=N+1; while(i-->1){
+    s->rho[i]=rho(umr,s,i);
   }
+  s->rho[0]=s->rho[0]/(4*M_PI_3*s->dr[0]);
+  irhoFRW = t * t * M_PI_3 * 32;
+  s->rho[N]=1/irhoFRW;
 
-  s->rhoDiff.b=0; //TODO: b.c.
-  exddx(&s->rhoDiff);
+  ddxm(s->rho,s->drho);
 
-  //integrating
-  /* i=N;while(i-->0){ */
-  /*   s->phi[i]=s->drho[i]/(-4*s->rho[i]); */
-  /* } */
-
-  /* s->phiInt.b=0; //TODO: b.c. */
-  /* exint(&s->phiInt); */
-
-  i=N; while(i-->0){
-    s->phi[i]=log(s->rho[i])/(-4);//b.c. still needs to happen.
+  
+  i=N+1; while(i-->0){
+    s->phi[i]=pow(s->rho[i]*irhoFRW,-.25);
   }
 }
 
-void msStep(state *s, double dt){  
-  update(s,&s->umr);
-  ev(s,&s->umr,&K1,.5*dt);
-  update(s,&K1);
-  ev(s,&K1,&s->umr,dt);
-  //  update(s,&s->umr);
-  //Only need to rescale U,m,R on the fly. the rest will be updated in the next pass.
+/* Integrator */
+/* dydt = function(y) */
+int function(double t, const double y[], double dydt[], void * params){
+  //printf("call at t = %f\n",t);
+  int i;
+  resvar stuff;
+  dynvar *umr = (void *) y;
+  update(t,umr,&stuff);
+
+  i=N+1; while(i-- > 1){
+    dydt[i]=dudt(umr,&stuff,i);
+    dydt[i+N+1]=dmdt(umr,&stuff,i);
+    dydt[i+2*N+2]=drdt(umr,&stuff,i);
+  }
+  dydt[0]=0;
+  dydt[N+1]=0;
+  dydt[2*N+2]=0;
+
+  return GSL_SUCCESS;
 }
 
-void msInit(){
-  //Function to create state from initial conditions.
+const gsl_odeiv2_system sys = {&function, NULL, 3*(N+1), NULL};
+gsl_odeiv2_driver *driver;
+
+void msEvolve(state *s, double t1){;
+  gsl_odeiv2_driver_apply(driver, &s->t, t1, (void *) &s->umr);
+}
+
+void msSetup(double a){
+  spectSetup(a);
+  driver = gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rk4, .001, 1E-6, 0.0);
+}
+
+void msInit(state *s){
+  //Function to create state from initial conditions, (U, R, rho).
+  int i;
+  dynvar *umr=&s->umr;
+  resvar *res=&s->res;
+  double irhoFRW;
+  
+  ddxm(umr->r,res->dr);
+
+  i=N+1; while(i-->0){
+    //temporarily store m' in \Gamma
+    res->gamma2[i] = 4 * M_PI * res->rho[i] * umr->r[i] * umr->r[i] * res->dr[i];
+  }
+  intm(res->gamma2,umr->m);
+
+  i=N+1; while(i-->1){
+    //M = m/r^2
+    umr->m[i] /= umr->r[i] * umr->r[i];
+  }
+  umr->m[0]=0;
+
+  s->t = sqrt(M_1_PI * 3 / 32);
+  //s->phi[N]=1;
+  //  irhoFRW = t * t * M_PI_3 * 32;
+  i=N+1; while(i-->0){
+    res->gamma2[i]=gamma2(umr,res,i);
+    res->phi[i]=pow(res->rho[i],-.25);
+  } 
 }
     
 
