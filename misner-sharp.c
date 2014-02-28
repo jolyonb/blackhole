@@ -39,7 +39,7 @@ inline static double dudt(const dynvar * restrict umr, const resvar * restrict s
 }
 
 inline static double dmdt(const dynvar * restrict umr, const resvar * restrict s, int i){
-  return -2 * s->phi[i] * ( 2 * M_PI_3 * umr->r[i] * s->rho[i] + umr->m[i] );
+  return -2 * s->phi[i] * umr-> u[i] * ( 2 * M_PI_3 * umr->r[i] * s->rho[i] + umr->m[i] );
 }
 
 inline static double drdt(const dynvar * restrict umr, const resvar * restrict s, int i){
@@ -74,10 +74,12 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
     s->rho[i]=rho(umr,s,i);
   }
   s->rho[0]=s->rho[0]/(4*M_PI_3*s->dr[0]);
+  irhoFRW = t * t * M_PI_3 * 32;
+  s->rho[N]=1/irhoFRW;
 
   ddxm(s->rho,s->drho);
 
-  irhoFRW = t * t * M_PI_3 * 32;
+  
   i=N+1; while(i-->0){
     s->phi[i]=pow(s->rho[i]*irhoFRW,-.25);
   }
