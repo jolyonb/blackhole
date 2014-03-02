@@ -1,7 +1,7 @@
 #ifndef SPECT_H
 #define SPECT_H
 
-#define N 32  //N.B. N+1 is the number of data points.
+#define N 31  //N.B. N+1 is the number of data points.
 
 void spectSetup(double);
 
