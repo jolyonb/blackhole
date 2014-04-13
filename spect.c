@@ -7,9 +7,12 @@
 static double REBASEM[N+1][N+1];
 static double DDXM[N+1][N+1];
 static double INTM[N+1][N+1];
+static fftw_plan coef;
 
 extern void dgemv_(const char *, const int *, const int *, const double *, const double *, const int *, const double *, const int *, const double *, double *, const int *);
 extern void dcopy_(const int *, const double *, const int *, double *, const int *);
+extern double ddot_(const int *, const double *, const int *, double *, const int *);
+extern void daxpy_(const int *, const double *, const double *, const int *, double *, const int *);
 
 typedef struct dplan{
   long double * yin; //input
@@ -60,6 +63,7 @@ static void exddx(dplan *d, long double *x){
   // executes a planed differentiation using:
   // y = sum(a_n T_n(x)) = sum(a_n cos(n \theta)
   //   => y' = sum(a_n n sin(n \theta) / sin(\theta))
+
   long double *WEIGHTS = x+N+1;
   long double *TY=x+3*(N+1);
   
@@ -68,7 +72,10 @@ static void exddx(dplan *d, long double *x){
 
   fftwl_execute(d->p[0]);
   
-  //  TY[N]*=0;
+  // TY[N]=0;
+  // TY[N-1]=0;
+  //TY[N-2]=0;
+  //TY[N-3]=0;
   #pragma GCC ivdep
   i=N; while(i-->1){
   //i=N-1; while(i-->1){
@@ -77,7 +84,6 @@ static void exddx(dplan *d, long double *x){
     a+=i*TY[i];
     b+=i*TY[i]*(2*(i&1)-1);
   }
-  TY[N]*=1;
   a/=-N;
   b/=-N;
   
@@ -100,21 +106,21 @@ static void exintl(dplan *d, long double a, long double *x){
 
   long double *IWEIGHTS = x+2*(N+1);
   long double *TY = x+3*(N+1);
-
+  
   int i;
   long double b=0;
-
-  #pragma GCC ivdep
+  
+#pragma GCC ivdep
   i=N; while(i-->1){
-  //for(i=0;i<N;i++){
+    //for(i=0;i<N;i++){
     d->yin[i]*=IWEIGHTS[i]; // note: input is destroyed. don't think we care.
   }
-      
+  
   fftwl_execute(d->p[0]);
 
-  #pragma GCC ivdep
+#pragma GCC ivdep
   i=N; while(i-->2){
-  //  for(i=2;i<N+1;i++){
+    //  for(i=2;i<N+1;i++){
     b+=(i)*TY[i]*(1-(N+i&1));
     TY[i]/=i;
     a+=-2*TY[i];
@@ -238,6 +244,50 @@ static void plrebase(double a, long double *x){
   }
 }
 
+static double FILTERM[N+1][N+1];
+
+static void plfilter(int a){
+  int i,j;
+  long double t[N+1];
+  fftwl_plan p;
+  //for(i=0;i<N;i++){
+  p=fftwl_plan_r2r_1d(N+1,t,t,FFTW_REDFT00,FFTW_ESTIMATE);
+  i=N+1;while(i-->0){
+    j=N+1;while(j-->0){
+      t[j]=i==j?1:0;
+    }
+    fftwl_execute(p);
+    /*j=N+1;while(j-->N+1-a){
+      t[j]=0;
+    }*/
+    j=N+1; while(j-->0){
+      t[j]*=expl(-36*powl(j*1.0/(N+1),32));
+    }
+    //t[N]*=0;
+    j=N+1; while(j-->0){
+      t[j]/=2*N;
+    }
+    fftwl_execute(p);
+    j=N+1; while(j-->0){
+      FILTERM[i][j]=(double)t[j];
+    }
+  }
+}
+
+/*
+static double KILLV[N+1];
+
+static void plkillv(){
+  int i = N+1; while (i-->0){
+    KILLV[i] = 2*(i&1) - 1;
+  }
+}
+
+static void killv(double *y){
+  int n[]={N+1,1};
+  double a = -1.0;
+  double x = ddot
+*/
 
 /* Actual Functions worth Calling */
 void spectSetup(double a){
@@ -247,6 +297,7 @@ void spectSetup(double a){
   plddxm(x);
   plintm(x);
   plrebase(a,x);
+  plfilter(4);
 }
 
 void intm(const double *y, double *dy){
@@ -270,4 +321,41 @@ void rebasem(double *y){
   double a[]={1.0,0.0};
   dcopy_(n,y,n+1,x,n+1);
   dgemv_("n",n,n,a,&REBASEM[0][0],n,x,n+1,a+1,y,n+1);
+}
+
+void filterm(double *y){
+  double x[N+1];
+  int n[]={N+1,1};
+  double a[]={1.0,0.0};
+  dcopy_(n,y,n+1,x,n+1);
+  dgemv_("n",n,n,a,&FILTERM[0][0],n,x,n+1,a+1,y,n+1);
+}
+
+double chebInterp(double *y, double x){
+  double *a; //coefficients
+  fftw_plan p = fftw_plan_r2r_1d(N+1,y,a,FFTW_REDFT00,FFTW_ESTIMATE);
+  fftw_execute(p);
+
+
+  long double b[2]; 
+  long double a0;
+  int i;
+  
+  fftwl_execute(f->p);
+
+      // b[1][j]=.5*a[N-1]; //because extremal grid weirdness
+  b[1]=a[N-1]+1*x*a[N];
+  b[0]=a[N-2]+2*x*b[1]-.5*a[N];
+
+    //i=(N-4)/2; while(i-->0){
+  i=N-2; while(i-->1){
+    b[i&1]=a[i]+2*x*b[(i+1)&1]-b[i&1];
+
+  //b[0][j]=a[i*2+2]+2*x[j]*b[1][j]-b[0][j];
+  //b[1][j]=a[i*2+1]+2*x[j]*b[0][j]-b[1][j];
+
+  }
+
+  return (a[0]/2+x[j]*b[1]-b[0])/N;
+  
 }
