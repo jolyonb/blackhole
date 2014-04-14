@@ -7,6 +7,8 @@
 static double REBASEM[N+1][N+1];
 static double DDXM[N+1][N+1];
 static double INTM[N+1][N+1];
+static double DDXME[N+1][N+1];
+static double INTME[N+1][N+1];
 static fftw_plan coef;
 
 extern void dgemv_(const char *, const int *, const int *, const double *, const double *, const int *, const double *, const int *, const double *, double *, const int *);
@@ -30,9 +32,16 @@ typedef struct flyplan{
 static void mkwi(long double *x){
   int i=N+1; while(i-->0){
     //  for(i=0;i<N;i++){
-    x[i]=-cosl(M_PIl*i/N);
-    x[i+(N+1)]=1/(-2*N*sinl(M_PIl*i/N));
-    x[i+2*(N+1)]=sinl(M_PIl*i/N)/(-2*N);
+    x[i]=-cosl(M_PIl*i/N); //x
+    x[i+(N+1)]=1/(-2*N*sinl(M_PIl*i/N)); //w
+    x[i+2*(N+1)]=sinl(M_PIl*i/N)/(-2*N); //iw
+  }
+}
+
+static void mkwie(long double *x){
+  int i=N+1; while(i-->0){
+    x[i+(N+1)]=1/(-1*N*sinl(.5*M_PIl*(N-i)/N)); //w
+    x[i+2*(N+1)]=sinl(.5*M_PIl*(N-i)/N)/(-1*N); //iw    
   }
 }
 
@@ -289,6 +298,48 @@ static void killv(double *y){
   double x = ddot
 */
 
+void plddxme(long double *x){
+  int i,j;
+  long double ddxm[N+1];
+  dplan ddx;
+  //for(i=0;i<N;i++){
+  i=N+1;while(i-->0){
+    ddx.yin=ddxm;
+    ddx.yout=ddxm;
+    ddx.ty=x+3*(N+1);
+    plddx(&ddx);
+    j=N+1;while(j-->0){
+      ddxm[j]=i==j?1:0;
+    }
+    exddx(&ddx,x);
+    DDXME[i][N]=(double) 4*ddxm[N];
+    j=N;while(j-->1){
+      DDXME[i][j]=(double) ddxm[j];
+    }
+    DDXME[i][0]=0;
+  }
+}
+
+static void plintme(long double *x){
+  // Fills integration matrix
+  int i,j;
+  long double xddm[N+1];
+  dplan xdd;
+  i=N+1;while(i-->0){
+    xdd.yin=xddm;
+    xdd.yout=xddm;
+    xdd.ty=x+3*(N+1);
+    plint(&xdd);
+    j=N+1;while(j-->0){
+      xddm[j]=i==j?1:0;
+    }
+    exintl(&xdd,0,x);
+    j=N+1;while(j-->0){
+      INTME[i][j]=(double)xddm[j];
+    }
+  }
+}
+
 /* Actual Functions worth Calling */
 void spectSetup(double a){
   //sets up doing spectral method things using matrix stuff. a is the ratio of the rebasing.
@@ -298,6 +349,9 @@ void spectSetup(double a){
   plintm(x);
   plrebase(a,x);
   plfilter(4);
+  mkwie(x);
+  plddxme(x);
+  plintme(x);
 }
 
 void intm(const double *y, double *dy){
@@ -331,6 +385,20 @@ void filterm(double *y){
   dgemv_("n",n,n,a,&FILTERM[0][0],n,x,n+1,a+1,y,n+1);
 }
 
+void intme(const double *y, double *dy){
+  //integrates y using even modes.
+  int n[]={N+1,1};
+  double a[]={1.0,0.0};
+  dgemv_("n",n,n,a,&INTME[0][0],n,y,n+1,a+1,dy,n+1);
+}
+
+void ddxme(const double *y, double *dy){
+  //takes derivative of y using even modes.
+  int n[]={N+1,1};
+  double a[]={1.0,0.0};
+  dgemv_("n",n,n,a,&DDXME[0][0],n,y,n+1,a+1,dy,n+1);
+}
+
 double chebInterp(double *y, double x){
   double *a; //coefficients
   fftw_plan p = fftw_plan_r2r_1d(N+1,y,a,FFTW_REDFT00,FFTW_ESTIMATE);
@@ -341,8 +409,6 @@ double chebInterp(double *y, double x){
   long double a0;
   int i;
   
-  fftwl_execute(f->p);
-
       // b[1][j]=.5*a[N-1]; //because extremal grid weirdness
   b[1]=a[N-1]+1*x*a[N];
   b[0]=a[N-2]+2*x*b[1]-.5*a[N];
@@ -356,6 +422,6 @@ double chebInterp(double *y, double x){
 
   }
 
-  return (a[0]/2+x[j]*b[1]-b[0])/N;
-  
+  return (a[0]/2+x*b[1]-b[0])/N;
+
 }
