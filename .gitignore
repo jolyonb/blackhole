@@ -25,3 +25,6 @@
 *.dyn
 *.dpi
 *.dpi.lock
+
+# Hidden files
+.*
