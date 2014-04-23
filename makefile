@@ -6,7 +6,7 @@ ifeq ($(USER),face)
 	LIBS=-lfftw3 -lfftw3l -lgsl -mkl
 else
 	CC=gcc
-	CFLAGS=-Ofast -flto -march=native -std=gnu99 -fprofile-dir=profiling -g -ggdb
+	CFLAGS=-Ofast -flto -march=native -std=gnu99 -fprofile-dir=profiling 
 	LIBS=-lfftw3 -lfftw3l -lgsl -lblas -lgslcblas -lm
 endif
 

@@ -75,7 +75,7 @@ int main(){
   
 
   //double m,a,fma;
-  intme(y,dy);
+  // intme(y,dy);
   msInit(&meee);
 
   // fftw_flops(fpl.p,&m,&a,&fma);
