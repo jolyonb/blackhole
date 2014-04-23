@@ -294,7 +294,12 @@ void msInit(state *s){
   dynvar *umr=&s->umr;
   resvar *res=&s->res;
 
+  fprintf(stderr, "%f\n", umr->m[0]);
   umr->photon = 0;
+
+  i=N+1;while(i-->0){
+    res->dr[i]=0;
+  }
   
   ddxm(umr->r,res->dr);
 
@@ -307,10 +312,12 @@ void msInit(state *s){
     res->gamma2[i] = 4 * M_PI * res->rho[i] * umr->r[i] * umr->r[i] * res->dr[i];
     //    umr->m[i]=4*M_PI_3*umr->r[i]*res->rho[i];
   }
+  fprintf(stderr, "%f\n", res->dr[0]);
   intm(res->gamma2,umr->m);
 
   // bcHack(umr->m, 4 * M_PI_3 * umr->r[N] * umr->r[N] * umr->r[N]);
   
+  fprintf(stderr, "%f\n", res->gamma2[0]);
 
   i=N+1; while(i-->1){
     //M = m/r^2

@@ -76,7 +76,7 @@ static void exddx(dplan *d, long double *x){
   long double *WEIGHTS = x+N+1;
   long double *TY=x+3*(N+1);
   
-  long double a,b=0;
+  long double a=0,b=0;
   int i;
 
   fftwl_execute(d->p[0]);
@@ -85,7 +85,7 @@ static void exddx(dplan *d, long double *x){
   // TY[N-1]=0;
   //TY[N-2]=0;
   //TY[N-3]=0;
-  #pragma GCC ivdep
+  // #pragma GCC ivdep
   i=N; while(i-->1){
   //i=N-1; while(i-->1){
   //for(i=1;i<N;i++){
@@ -98,12 +98,13 @@ static void exddx(dplan *d, long double *x){
   
   a+=-N*.5*TY[N];
   b+=-N*.5*TY[N]*(2*(N&1)-1);
+  // fprintf(stderr, "hi %Lf\n", a);
   d->yout[0]=a;
   d->yout[N]=b;
   
   fftwl_execute(d->p[1]);
 
-  #pragma GCC ivdep
+  // #pragma GCC ivdep
   i=N; while(i-->1){
     //for(i=0;i<N;i++){
     d->yout[i]*=WEIGHTS[i];
@@ -150,7 +151,7 @@ static void exfly(flyplan *f ,long double left, long double right, long double *
   long double x[N+1];
   long double *a=f->y;
   long double b[2][N+1]; 
-  long double a0;
+  long double a0=0;
   int i,j,k;
 
   j=N+1; while(j-->0){
@@ -199,10 +200,15 @@ static void plddxm(long double *x){
     j=N+1;while(j-->0){
       ddxm[j]=i==j?1:0;
     }
+    fprintf(stderr, "a%Lf\n", ddxm[0]);
     exddx(&ddx,x);
+    fprintf(stderr, "b%Lf\n", ddxm[0]);
     j=N+1;while(j-->0){
+
       DDXM[i][j]=(double) ddxm[j];
+      // fprintf(stderr, "what. %d\t%d\t%f\t%Lf\n", i,j, DDXM[i][j], ddxm[j]);
     }
+    // fprintf(stderr, "d%f\n", DDXM[0][0]);
   }
   /*
   for(i=0;i<=N;i++){
@@ -408,7 +414,7 @@ double chebInterp(double *y, double x){
   fftw_execute(p);
 
   double b[2]; 
-  long double a0;
+  long double a0=0;
   int i;
   
       // b[1][j]=.5*a[N-1]; //because extremal grid weirdness
