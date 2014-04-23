@@ -427,7 +427,7 @@ double chebInterp(double *y, double x){
   }
 
   fftw_destroy_plan(p);
-printf("%e\n",-(a[0]/2+x*b[1]-b[0])/N);
+// printf("%e\n",-(a[0]/2+x*b[1]-b[0])/N);
   return (a[0]/2+x*b[1]-b[0])/N;
 
 }
