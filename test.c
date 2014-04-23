@@ -75,7 +75,7 @@ int main(){
   
 
   //double m,a,fma;
-  intme(y,dy);
+  // intme(y,dy);
   msInit(&meee);
 
   // fftw_flops(fpl.p,&m,&a,&fma);
@@ -103,28 +103,28 @@ int main(){
 
 
 
-  // i=2000; while(i-->0){
-  //   if(msEvolve(&meee,meee.t*1.005)!=0){
-  //     fprintf(stderr, "breaking\n");
-  //     break;
-  //   }
-  //   //   function(1,(void *) &meee.umr, y, NULL);
-  //   //filterm(meee.umr.u);
-  //   update(meee.t, &meee.umr, &meee.res);
-  //   // printf("%f\n",meee.t*meee.t*meee.res.rho[1]);
-  //   //    ddxm(meee.umr.m,y);
+  i=2000; while(i-->0){
+    if(msEvolve(&meee,meee.t*1.005)!=0){
+      fprintf(stderr, "breaking\n");
+      break;
+    }
+    //   function(1,(void *) &meee.umr, y, NULL);
+    //filterm(meee.umr.u);
+    update(meee.t, &meee.umr, &meee.res);
+    // printf("%f\n",meee.t*meee.t*meee.res.rho[1]);
+    //    ddxm(meee.umr.m,y);
 
-  //   //filterm(meee.res.dr);
-  //   // filterm(meee.res.rho);
-  //   fftw_execute(p);
-  //   //printf("\n\n#u=U/R\t\tM=m/R^2\t\tR\t\trho\t\tphi\n");
-  //   printf("\n\n");
-  //   printstate(meee);
-  //    // for(j=0;j<=N;j++){
-  //    //   printf("%e\n",y[j]);
-  //    // }
-  //   fprintf(stderr, "i=%d\n", i);
-  // }
+    //filterm(meee.res.dr);
+    // filterm(meee.res.rho);
+    fftw_execute(p);
+    //printf("\n\n#u=U/R\t\tM=m/R^2\t\tR\t\trho\t\tphi\n");
+    printf("\n\n");
+    printstate(meee);
+     // for(j=0;j<=N;j++){
+     //   printf("%e\n",y[j]);
+     // }
+    fprintf(stderr, "i=%d\n", i);
+  }
 
 
 
@@ -151,7 +151,7 @@ int main(){
   // printf("#u=U/R\t\tM=m/R^2\t\tR\t\trho\t\tphi\n");
   //filterm(y);
   for(i=0;i<(N+1);i++){
-     printf("%e\t%e\t%e\n",x[i],y[i],chebInterp(y,x[i]));
+     // printf("%e\t%e\t%e\n",x[i],y[i],chebInterp(y,x[i]));
   }
   //printf("%.19f\t%.19f\n",M_PI_3,1.0471975511965977462);
   //  printf("%p\t%p\t%p\n",meeee.umr.u,meeee.umr.m,meeee.umr.r);
