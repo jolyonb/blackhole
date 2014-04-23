@@ -11,4 +11,6 @@ void intm(const double *, double *);
 void rebasem(double *);
 void filterm(double *);
 
+double chebInterp(double *, double);
+
 #endif
