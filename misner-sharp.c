@@ -27,10 +27,10 @@ typedef struct state {
   resvar res;
 
   double t;
-  double Afrw;
+  // double Afrw;
 } state;
 
-
+double AFRW;
 /* */
 /* Equations of motion. */
 /* */
@@ -124,7 +124,8 @@ int function(double t, const double y[], double dydt[], void * params){
     dydt[i+N+1]=dmdt(umr,&stuff,i);
     dydt[i+2*N+2]=drdt(umr,&stuff,i);
   }
-  
+
+  dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
   //dydt[N] = -1/(2*t*t);
   // dydt[N+N+1] = umr->r[N]/(2*t);
   // dydt[3*N+2] = -3 * umr->m[N] / (2 * t);
@@ -133,7 +134,24 @@ int function(double t, const double y[], double dydt[], void * params){
   dydt[N+1]=0;
   dydt[2*N+2]=0;
 
-  dydt[3*N+3] = 0;
+  i=N+1; while(i-->0){
+    if(stuff.rho[i]<0){
+      fprintf(stderr, "rho < 0");
+      return GSL_FAILURE;
+    }
+    if(isnan(umr->u[i])){
+      fprintf(stderr, "u NAN");
+      return GSL_FAILURE;
+    }
+    if(isnan(umr->m[i])){
+      fprintf(stderr, "m NAN");
+      return GSL_FAILURE;
+    }
+    if(isnan(umr->r[i])){
+      fprintf(stderr, "r nan");
+      return GSL_FAILURE;
+    }
+  }
 
   return GSL_SUCCESS;
 }
@@ -178,11 +196,12 @@ int msEvolve(state *s, double t1){
     //    s->umr.m[N] = 4 * M_PI_3 * s->umr.r[N] * s->
 
     //filterm(s->umr.u);
+    if(j!=GSL_SUCCESS) return 1;
   }
   if(blackholeQ(&s->umr)!=-1){
-      fprintf(stderr, "black hole! at %f\n",s->Afrw*.5*(1-cos(M_PI*blackholeQ(&s->umr)/N)));
-      return 1;
-    } 
+    fprintf(stderr, "black hole! at %f\n",AFRW*.5*(1-cos(M_PI*blackholeQ(&s->umr)/N)));
+    return 1;
+  }   
   return 0;
 }
 
@@ -312,7 +331,8 @@ void msInit(state *s){
   umr->m[N]=4 * M_PI_3 * umr->r[N];
 
   s->t = sqrt(M_1_PI * 3 / 32);
-  s->Afrw = umr->r[N];
+  // s->Afrw = umr->r[N];
+  AFRW = umr->r[N];
   res->phi[N]=1;
   res->gamma2[N]=8*M_PI_3;
   //  irhoFRW = t * t * M_PI_3 * 32;

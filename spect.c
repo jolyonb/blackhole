@@ -41,7 +41,7 @@ static void mkwi(long double *x){
 static void mkwie(long double *x){
   int i=N+1; while(i-->0){
     x[i+(N+1)]=1/(-1*N*sinl(.5*M_PIl*(N-i)/N)); //w
-    x[i+2*(N+1)]=sinl(.5*M_PIl*(N-i)/N)/(-1*N); //iw    
+    x[i+2*(N+1)]=sinl(.5*M_PIl*(N-i)/N)/(-4*N); //iw    
   }
 }
 
@@ -139,6 +139,7 @@ static void exintl(dplan *d, long double a, long double *x){
 
   //  TY[N]=-(b-(d->yin[N]-d->yin[0])/4)/(N*N); //This might be assuming N is even. It probably should be anyway.
   TY[N]=(-2)*(b+((2*(1&N)-1)*d->yin[N]+d->yin[0])/4)/(N*N);
+  // TY[N]=(-2)*(b+((2*(1&N)-1)*d->yin[0]+d->yin[N])/4)/(N*N);
   TY[0]=(a-(TY[N]+2*TY[1]));
 
   fftwl_execute(d->p[1]);
@@ -333,6 +334,8 @@ static void plintme(long double *x){
     j=N+1;while(j-->0){
       xddm[j]=i==j?1:0;
     }
+    // xddm[0]=0;
+    xddm[N]*=1;
     exintl(&xdd,0,x);
     j=N+1;while(j-->0){
       INTME[i][j]=(double)xddm[j];
@@ -400,12 +403,11 @@ void ddxme(const double *y, double *dy){
 }
 
 double chebInterp(double *y, double x){
-  double *a; //coefficients
+  double a[N+1]; //coefficients
   fftw_plan p = fftw_plan_r2r_1d(N+1,y,a,FFTW_REDFT00,FFTW_ESTIMATE);
   fftw_execute(p);
 
-
-  long double b[2]; 
+  double b[2]; 
   long double a0;
   int i;
   
@@ -413,15 +415,19 @@ double chebInterp(double *y, double x){
   b[1]=a[N-1]+1*x*a[N];
   b[0]=a[N-2]+2*x*b[1]-.5*a[N];
 
-    //i=(N-4)/2; while(i-->0){
-  i=N-2; while(i-->1){
-    b[i&1]=a[i]+2*x*b[(i+1)&1]-b[i&1];
+  // printf("%e\n",b[1]);
 
+    //i=(N-4)/2; while(i-->0){
+  i=N-3; while(i-->1){
+    b[i&1] = a[i-1] + 2*x*b[(i+1)&1] - b[i&1];
+    // printf("%e = %e + 2 * %e * %e - %e\n",b[i&1],a[i],x,b[(i+1)&1],b[i&1]);
   //b[0][j]=a[i*2+2]+2*x[j]*b[1][j]-b[0][j];
   //b[1][j]=a[i*2+1]+2*x[j]*b[0][j]-b[1][j];
 
   }
 
+  fftw_destroy_plan(p);
+printf("%e\n",-(a[0]/2+x*b[1]-b[0])/N);
   return (a[0]/2+x*b[1]-b[0])/N;
 
 }
