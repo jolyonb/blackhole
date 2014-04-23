@@ -11,6 +11,7 @@ else
 endif
 
 default: test
+all: test
 
 test: spect.o test.c
 	$(CC) $(CFLAGS) spect.o test.c $(LIBS)
@@ -28,4 +29,4 @@ spect.s: spect.c
 	$(CC) $(CFLAGS) -O2 -S -masm=intel spect.c
 
 clean:
-	rm *.o *~
+	rm *.o a.out
