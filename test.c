@@ -46,8 +46,9 @@ int main(){
 		x[i]=-cos(M_PI*(i)/N);
 
 		// Data: r, rho, u
+		// Note the last value in this expression for r gives how many horizon spans we have initially
 		data.umr.r[i]=.5*(1+x[i])*5;
-		data.res.rho[i]=1.0+1.9*exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
+		data.res.rho[i]=1.0+2.04*exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
 		data.umr.u[i] = sqrt(8*M_PI_3);
 	}
 
@@ -71,7 +72,7 @@ int main(){
 
 		// Do the timestep
 		if(msEvolve(&data,data.t*1.005)!=0) {
-			fprintf(stderr, "breaking\n");
+			fprintf(stderr, "Breaking\n");
 			break;
 		}
 
@@ -89,9 +90,16 @@ int main(){
 		}
 */
 		// Counter for the purposes of how well things are going
-		//fprintf(stderr, "i=%d\n", i);
+		// fprintf(stderr, "i=%d\n", i);
 	}
 
+	// Destroy the plan
+	fftw_destroy_plan(p);
+
+	// Release the GSL memory
+	// TO DO
+
 	// Finished. Phew.
+	fprintf(stderr, "Done!\n");
 	return 0;
 }
