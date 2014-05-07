@@ -204,6 +204,11 @@ int msEvolve(state *s, double t1){
 		// Call update on the data
 		update(s->t, &s->umr, &s->res);
 
+		// Assert the CFL condition
+		oldstep = s->res.phi[0] * (1 - cos(M_PI/N)) / 2;
+		if (h > oldstep)
+			h = oldstep;
+
 		// Copy data before taking the step
 		oldstate.t = s->t;
 		oldstep = h;
