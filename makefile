@@ -29,4 +29,4 @@ spect.s: spect.c
 	$(CC) $(CFLAGS) -O2 -S -masm=intel spect.c
 
 clean:
-	rm *.o a.out *~
+	rm -f *.o a.out *~

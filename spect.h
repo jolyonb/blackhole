@@ -6,7 +6,7 @@
 #define SPECT_H
 
 // Number of points - 1. 31 is good, as is 47, and 63.
-#define N 63  //N.B. N+1 is the number of data points.
+#define N 47  //N.B. N+1 is the number of data points.
 
 // Initialize spectral matrices
 void spectSetup(double);
