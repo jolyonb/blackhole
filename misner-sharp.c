@@ -119,7 +119,7 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 	}
 
 	// Filter phi and set outer boundary to 1 (can be changed from filtering)
-	// filterm(s->phi);
+	filterm(s->phi);
 	s->phi[N]=1;
 }
 
@@ -153,21 +153,21 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	// Sanity checks
 	i=N+1; while(i-->0){
 		if(stuff.rho[i]<0){
-			fprintf(stderr, "rho < 0"); // Negative energy density
-			return GSL_FAILURE;
+			//fprintf(stderr, "rho < 0"); // Negative energy density
+			return -42;
 		}
 		// Rest of these are NANs
 		if(isnan(umr->u[i])){
-			fprintf(stderr, "u NAN");
-			return GSL_FAILURE;
+			//fprintf(stderr, "u NAN");
+			return -42;
 		}
 		if(isnan(umr->m[i])){
-			fprintf(stderr, "m NAN");
-			return GSL_FAILURE;
+			//fprintf(stderr, "m NAN");
+			return -42;
 		}
 		if(isnan(umr->r[i])){
-			fprintf(stderr, "r nan");
-			return GSL_FAILURE;
+			//fprintf(stderr, "r nan");
+			return -42;
 		}
 	}
 
@@ -189,16 +189,75 @@ int blackholeQ(dynvar *umr){
 // Evolve forwards in time to t1.
 int msEvolve(state *s, double t1){
 
+	// Copy of data before step is taken
+	state oldstate;
+
 	// Step size
 	static double h=1E-3;
+	double oldstep;
 	int i=0,j;
 	while(s->t<t1){ // Before time t1, keep on evolving
+
+		if (h == 0)
+			return 1;
+
+		// Call update on the data
+		update(s->t, &s->umr, &s->res);
+
+		// Copy data before taking the step
+		oldstate.t = s->t;
+		oldstep = h;
+		for (i = 0; i < N+1; i++) {
+			oldstate.umr.m[i] = s->umr.m[i];
+			oldstate.umr.r[i] = s->umr.r[i];
+			oldstate.umr.u[i] = s->umr.u[i];
+			oldstate.umr.photon = s->umr.photon;
+			oldstate.res.rho[i] = s->res.rho[i];
+		}
 
 		// Take the step
 		j=gsl_odeiv2_evolve_apply(eve, con, step, &sys, &s->t, t1, &h, (void *) &s->umr);
 
 		// Check for error
+		if (j == -42) {
+			s->t = oldstate.t;
+			h = oldstep / 10;
+			fprintf(stderr, "rejigging. %e, %e\n", s->t, h);
+			for (i = 0; i < N+1; i++) {
+				s->umr.m[i] = oldstate.umr.m[i];
+				s->umr.r[i] = oldstate.umr.r[i];
+				s->umr.u[i] = oldstate.umr.u[i];
+				s->umr.photon = oldstate.umr.photon;
+			}
+			continue;
+		}
 		if(j!=GSL_SUCCESS) return 1;
+
+		// Call update on the data
+		update(s->t, &s->umr, &s->res);
+
+		// Check that rho hasn't gone negative
+		int redo = 0;
+		for (i = 0; i < N+1; i++) {
+			if (fabs((s->res.rho[i] - oldstate.res.rho[i])/ oldstate.res.rho[i]) > 0.005 || s->res.rho[i] < 0) {
+				redo = 1;
+				fprintf(stderr, "rejigging. %e, %e\n", oldstate.t, oldstep/10);
+				break;
+			}
+		}
+		// If redo = 1, then we jumped too far. Reset the state, decrease h, and try again
+		if (redo == 1) {
+			s->t = oldstate.t;
+			h = oldstep / 10;
+			for (i = 0; i < N+1; i++) {
+				s->umr.m[i] = oldstate.umr.m[i];
+				s->umr.r[i] = oldstate.umr.r[i];
+				s->umr.u[i] = oldstate.umr.u[i];
+				s->umr.photon = oldstate.umr.photon;
+			}
+			continue;
+		}
+
 
 		// Set the value of u at the origin (to use better method later)
 		s->umr.u[0]=s->umr.u[1];
