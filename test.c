@@ -48,8 +48,13 @@ int main(){
 		// Data: r, rho, u
 		// Note the last value in this expression for r gives how many horizon spans we have initially
 		data.umr.r[i]=.5*(1+x[i])*5;
-		data.res.rho[i]=1.0+2.04*exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
+		data.res.rho[i]=1.0+2.06*exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
 		data.umr.u[i] = sqrt(8*M_PI_3);
+	}
+
+	// Debugging
+	i=N+1;while(i-->0){
+		y[i]=cos(M_PI*i);
 	}
 
 	// Construct the plan to grab data and output derivative
@@ -57,9 +62,6 @@ int main(){
 
 	// Initialises the rest of the data (namely, m)
 	msInit(&data);
-
-	// Set initial time
-	to=sqrt(3*M_1_PI/(32));
 
 	// Calculate rho, gamma, etc from u, m and r
 	update(data.t, &data.umr, &data.res);

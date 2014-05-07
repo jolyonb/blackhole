@@ -22,7 +22,7 @@ extern void dgemv_(const char *, const int *, const int *, const double *, const
 // Copy
 extern void dcopy_(const int *, const double *, const int *, double *, const int *);
 // Dot product
-extern double ddot_(const int *, const double *, const int *, double *, const int *);
+extern double ddot_(const int *, const double *, const int *, const double *, const int *);
 // aX + Y
 extern void daxpy_(const int *, const double *, const double *, const int *, double *, const int *);
 
@@ -275,7 +275,8 @@ static void plfilter(){
 		fftwl_execute(p);
 		// Filtering
 		j=N+1; while(j-->0){
-			t[j]*=expl(-36*powl(j*1.0/(N+1),32));
+			// t[j]*=expl(-36*powl(j*1.0/(N+1),32));
+			t[j]*=expl(-48*powl(j*1.0/(N+1),24));
 		}
 		// Normalize to get back to real space
 		j=N+1; while(j-->0){
@@ -366,6 +367,12 @@ void ddxm(const double *y, double *dy){
 	int n[]={N+1,1};
 	double a[]={1.0,0.0};
 	dgemv_("n",n,n,a,&DDXM[0][0],n,y,n+1,a+1,dy,n+1);
+}
+
+// Take the derivative at x=-1.
+double ddxm0(const double *y){
+	int n[]={N+1,1};
+	return ddot_(n,&DDXM[0][0],n+1,y,n+1);
 }
 
 // Matrix-vector multiplies (ooh, fancy): Rebasing

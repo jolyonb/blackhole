@@ -82,10 +82,13 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 	double irhoFRW;
 	int i;
 
+
 	// Populate gamma2
-	i=N; while(i-->1){
+	i=N+1; while(i-->1){
 		s->gamma2[i]=gamma2(umr,s,i);
 	}
+	s->gamma2[N]=8*M_PI_3;
+	s->gamma2[0]=8*M_PI_3;
 
 	// Take r and m derivatives. Note that m' is stored in rho temporarily
 	ddxm(umr->r,s->dr);
@@ -116,7 +119,7 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 	}
 
 	// Filter phi and set outer boundary to 1 (can be changed from filtering)
-	filterm(s->phi);
+	// filterm(s->phi);
 	s->phi[N]=1;
 }
 
@@ -139,7 +142,8 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	}
 
 	// dA/dt for photon
-	dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
+	// dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
+	dydt[3*N+3]=0;
 
 	// Derivatives at the origin
 	dydt[0]=0;
@@ -241,8 +245,9 @@ void msSetup(double a){
 	// Spectral setup
 	spectSetup(a);
 	// GSL ODE_INT setup
-	step = gsl_odeiv2_step_alloc(gsl_odeiv2_step_rk2, 3*(N+1)+1);
-	con = gsl_odeiv2_control_y_new(1E-10, 1E-6); // Tiny absolute, larger relative
+	step = gsl_odeiv2_step_alloc(gsl_odeiv2_step_rkf45, 3*(N+1)+1);
+	con = gsl_odeiv2_control_y_new(1E-10, 1E-7); // Tiny absolute, larger relative
+	// con = gsl_odeiv2_control_y_new(1E-6,0);
 	eve = gsl_odeiv2_evolve_alloc(3*(N+1)+1);
 }
 
@@ -253,11 +258,14 @@ void bcHack(double *m, double mFRW){
 	//do some integration
 	int i;
 	i=N+1; while(i-->0) a[i]=0;
-	// a[N-1]=1;
 	a[N-2]=1;
-	a[N-3]=2;
-	a[N-4]=2;
-	a[N-5]=1;
+	a[N-3]=7;
+	a[N-4]=21;
+	a[N-5]=35;
+	a[N-6]=35;
+	a[N-7]=21;
+	a[N-8]=7;
+	a[N-9]=1;
 
 	intm(a,ma);
 
