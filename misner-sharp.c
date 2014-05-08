@@ -76,6 +76,21 @@ inline static double gamma2(const dynvar * restrict umr, const resvar * restrict
 
 /*****/
 
+
+//calculates u at the origin
+inline static double u0(const dynvar * umr){
+	double temp[N+1];
+	int i;
+
+	//Build U.
+	for(i=0;i<N+1;i++){
+		temp[i] = umr->u[i] * umr->r[i];
+	}
+
+	//u'(0) = U'(0)/R'(0);
+	return ddx0(temp)/ddx0(umr->r);
+}
+
 // Populates the "rest" of the variables
 static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 
@@ -222,7 +237,7 @@ int msEvolve(state *s, double t1){
 
 		// Take the step
 		j=gsl_odeiv2_evolve_apply(eve, con, step, &sys, &s->t, t1, &h, (void *) &s->umr);
-
+		// fprintf(stderr, "%e\n", h);
 		// Check for error
 		if (j == -42) {
 			s->t = oldstate.t;
