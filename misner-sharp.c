@@ -386,11 +386,9 @@ void msInit(state *s){
 		umr->m[i] /= umr->r[i] * umr->r[i];
 	}
 
-	// Calculate the mass overdensity. Bit of a hack for now... This will be fixed soon!
-	double tempm[N+1];
-	i=N+1;while(i-->0) tempm[i]=umr->m[i];
-	rebasem(tempm);
-	fprintf(stderr, "mass overdensity: %f\n", tempm[0]/(4 * M_PI_3) - 1);
+	// Calculate the mass overdensity.
+	double over = chebInterp(umr->m,(2/umr->r[N])-1);
+	fprintf(stderr, "mass overdensity: %f\n", over/(4 * M_PI_3) - 1);
 
 	// Enforce the matching condition
 	bcHack(umr->m, 4 * M_PI_3 * umr->r[N]);
