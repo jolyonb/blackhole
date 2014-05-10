@@ -157,8 +157,7 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	}
 
 	// dA/dt for photon
-	// dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
-	dydt[3*N+3]=0;
+	dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
 
 	// Derivatives at the origin
 	dydt[0]=0;
@@ -237,12 +236,13 @@ int msEvolve(state *s, double t1){
 
 		// Take the step
 		j=gsl_odeiv2_evolve_apply(eve, con, step, &sys, &s->t, t1, &h, (void *) &s->umr);
+		fprintf(stderr, "photon at %f\n", s->umr.photon);
 		// fprintf(stderr, "%e\n", h);
 		// Check for error
 		if (j == -42) {
 			s->t = oldstate.t;
 			h = oldstep / 10;
-			fprintf(stderr, "rejigging. %e, %e\n", s->t, h);
+			// fprintf(stderr, "rejigging. %e, %e\n", s->t, h);
 			for (i = 0; i < N+1; i++) {
 				s->umr.m[i] = oldstate.umr.m[i];
 				s->umr.r[i] = oldstate.umr.r[i];
@@ -261,7 +261,7 @@ int msEvolve(state *s, double t1){
 		for (i = 0; i < N+1; i++) {
 			if (fabs((s->res.rho[i] - oldstate.res.rho[i])/ oldstate.res.rho[i]) > 0.005 || s->res.rho[i] < 0) {
 				redo = 1;
-				fprintf(stderr, "rejigging. %e, %e\n", oldstate.t, oldstep/10);
+				// fprintf(stderr, "rejigging. %e, %e\n", oldstate.t, oldstep/10);
 				break;
 			}
 		}
