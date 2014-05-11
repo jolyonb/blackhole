@@ -24,6 +24,7 @@ typedef struct resvar {
 	double phi[N+1];
 	double dr[N+1];
 	double drho[N+1];
+	double lastupdated; // Time that the update call was last run
 } resvar;
 
 // Everything together now!
@@ -94,6 +95,10 @@ inline static double u0(const dynvar * umr){
 // Populates the "rest" of the variables
 static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 
+	// If nothing has changed since we last did our update, then get out
+	if (t == s->lastupdated)
+		return;
+
 	double irhoFRW;
 	int i;
 
@@ -136,6 +141,9 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 	// Filter phi and set outer boundary to 1 (can be changed from filtering)
 	filterm(s->phi);
 	s->phi[N]=1;
+
+	// Set the update time
+	s->lastupdated = t;
 }
 
 /* Integrator */
