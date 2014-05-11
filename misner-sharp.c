@@ -231,7 +231,7 @@ void regrid(state *s){
 	rebasem(s->umr.m);
 	rebasem(s->umr.r);
 	A0 = RATIO * A0 + (1-RATIO) * AFRW;
-	s->umr.photon = s-umr.photon / RATIO + (1 - 1/RATIO);
+	s->umr.photon = s->umr.photon / RATIO + (1 - 1/RATIO);
 }
 
 // Evolve forwards in time to t1. Throws final u,m,R,A,t at photon in umrat
