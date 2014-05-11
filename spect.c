@@ -372,7 +372,7 @@ void ddxm(const double *y, double *dy){
 // Take the derivative at x=-1.
 double ddxm0(const double *y){
 	int n[]={N+1,1};
-	return ddot_(n,&DDXM[0][0],n+1,y,n+1);
+	return ddot_(n,&DDXM[0][0],n,y,n+1);
 }
 
 // Matrix-vector multiplies (ooh, fancy): Rebasing

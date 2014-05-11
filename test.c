@@ -20,6 +20,7 @@ void printstate(state data){
 	for(j=0;j<(N+1);j++){
 		printf("%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\n",.5+.5*x[j],data.umr.u[j],data.umr.m[j],data.umr.r[j],data.res.rho[j],data.res.phi[j],data.res.gamma2[j],data.res.dr[j],data.res.drho[j],data.umr.photon*AFRW,chebInterp(data.res.rho,data.umr.photon*2-1));
 	}
+	printf("\n\n");
 }
 
 // Reads in a single parameter from the param.ini file
@@ -78,6 +79,7 @@ int main(){
 	// Variable definitions
 	int j; // Random iterator
 	state data; // Actual state of the system
+	double umrat[5]; //storage for null slice
 	double to; // t_0 -> initial time
 	fftw_plan p; // Plan for the the FFTs
 
@@ -113,23 +115,34 @@ int main(){
 	// Calculate rho, gamma, etc from u, m and r
 	update(data.t, &data.umr, &data.res);
 
+	//inital photon stuff
+	umrat[0]=data.umr.u[0];
+	umrat[1]=0;
+	umrat[2]=0;
+	umrat[3]=0;
+	umrat[4]=data.t;
+
 	// Take 2000 steps
 	i=2000;
 
 	// The loop that does the evolution
 	while(i-->0){
 
+		printf("%e\t%e\t%e\t%e\t%e\n", umrat[0],umrat[1],umrat[2],umrat[3],umrat[4]);
+
+
 		// Do the timestep
-		if(msEvolve(&data,data.t*1.005)!=0) {
+		if(msEvolve(&data,data.t*1.005,umrat)!=0) {
 			fprintf(stderr, "Breaking\n");
 			break;
 		}
+		// fprintf(stderr, "u=%f\n",umrat[0] );
 
 		// Go and updates values so that we can print them
 		update(data.t, &data.umr, &data.res);
 
-		printstate(data);
 		printf("\n\n");
+		printstate(data);
 
 		// Computes and prints the coefficients in the density profile (debugging)
 /*
