@@ -186,7 +186,7 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	}
 
 	// dA/dt for photon
-	dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
+	dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/(2*chebInterp(stuff.dr,umr->photon*2-1));
 	// dydt[3*N+3]=0;
 	
 
@@ -361,7 +361,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	resvar res;
 	update(s->t,&s->umr,&res);
 	i=N+1; while(i-->0){
-		if (res.rho[i] > 0.001) return 0;  // Found a value above 1% of original FRW density
+		if (res.rho[i] > 0.0001) return 0;  // Found a value above 1% of original FRW density
 	}
 
 	// If we got to here, we have no overdensities to speak of

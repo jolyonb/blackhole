@@ -212,6 +212,8 @@ int main(){
 	// Print out t at a = 1
 	double val = gsl_spline_eval (tspline.spline, 1.0, tspline.acc);
 	fprintf(stderr,"t at a = 1: %lf\n", val);
+	double t0 = sqrt(1/(32*M_PI_3));
+	fprintf(stderr, "delta t^1/2 = %f\n", (sqrt(val) - sqrt(t0))*2*sqrt(8*M_PI_3)*sqrt(t0));
 
 	// Destroy the plan
 	fftw_destroy_plan(p);
