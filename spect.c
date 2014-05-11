@@ -425,18 +425,18 @@ double chebInterp(double *y, double x){
 	int i;
 
 	// Evaluate the Chebyshev polynomials at x in a clever way
-	b[1]=a[N-1]+1*x*a[N];
-	b[0]=a[N-2]+2*x*b[1]-.5*a[N];
+	b[(N-1)&1] = a[N-1] - 1*x*a[N];
+	b[N&1] = a[N-2] - 2*x*b[(N-1)&1] - .5*a[N];
 
 	// Loop
-	i=N-3; while(i-->1){
-		b[i&1] = a[i-1] + 2*x*b[(i+1)&1] - b[i&1];
+	i=N-2; while(i-->1){
+		b[i&1] = a[i] - 2*x*b[(i+1)&1] - b[i&1];
 	}
 
 	// Destroy the plan
 	fftw_destroy_plan(p);
 
 	// Return the result
-	return (a[0]/2+x*b[1]-b[0])/N;
+	return (a[0]/2 - x*b[1] - b[0])/N;
 
 }

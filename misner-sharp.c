@@ -76,6 +76,21 @@ inline static double gamma2(const dynvar * restrict umr, const resvar * restrict
 
 /*****/
 
+
+//calculates u at the origin
+inline static double u0(const dynvar * umr){
+	double temp[N+1];
+	int i;
+
+	//Build U.
+	for(i=0;i<N+1;i++){
+		temp[i] = umr->u[i] * umr->r[i];
+	}
+
+	//u'(0) = U'(0)/R'(0);
+	return ddx0(temp)/ddx0(umr->r);
+}
+
 // Populates the "rest" of the variables
 static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 
@@ -142,9 +157,8 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	}
 
 	// dA/dt for photon
-	// dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
-	dydt[3*N+3]=0;
-
+	dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
+	// dydt[3*N+3]=0;
 	// Derivatives at the origin
 	dydt[0]=0;
 	dydt[N+1]=0;
@@ -222,12 +236,13 @@ int msEvolve(state *s, double t1){
 
 		// Take the step
 		j=gsl_odeiv2_evolve_apply(eve, con, step, &sys, &s->t, t1, &h, (void *) &s->umr);
-
+		// fprintf(stderr, "photon at %f\n", s->umr.photon);
+		// fprintf(stderr, "%e\n", h);
 		// Check for error
 		if (j == -42) {
 			s->t = oldstate.t;
 			h = oldstep / 10;
-			fprintf(stderr, "rejigging. %e, %e\n", s->t, h);
+			// fprintf(stderr, "rejigging. %e, %e\n", s->t, h);
 			for (i = 0; i < N+1; i++) {
 				s->umr.m[i] = oldstate.umr.m[i];
 				s->umr.r[i] = oldstate.umr.r[i];
@@ -246,7 +261,7 @@ int msEvolve(state *s, double t1){
 		for (i = 0; i < N+1; i++) {
 			if (fabs((s->res.rho[i] - oldstate.res.rho[i])/ oldstate.res.rho[i]) > 0.005 || s->res.rho[i] < 0) {
 				redo = 1;
-				fprintf(stderr, "rejigging. %e, %e\n", oldstate.t, oldstep/10);
+				// fprintf(stderr, "rejigging. %e, %e\n", oldstate.t, oldstep/10);
 				break;
 			}
 		}
@@ -371,11 +386,9 @@ void msInit(state *s){
 		umr->m[i] /= umr->r[i] * umr->r[i];
 	}
 
-	// Calculate the mass overdensity. Bit of a hack for now... This will be fixed soon!
-	double tempm[N+1];
-	i=N+1;while(i-->0) tempm[i]=umr->m[i];
-	rebasem(tempm);
-	fprintf(stderr, "mass overdensity: %f\n", tempm[0]/(4 * M_PI_3) - 1);
+	// Calculate the mass overdensity.
+	double over = chebInterp(umr->m,(2/umr->r[N])-1);
+	fprintf(stderr, "mass overdensity: %f\n", over/(4 * M_PI_3) - 1);
 
 	// Enforce the matching condition
 	bcHack(umr->m, 4 * M_PI_3 * umr->r[N]);
