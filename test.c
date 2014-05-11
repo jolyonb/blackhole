@@ -48,7 +48,7 @@ int main(){
 		// Data: r, rho, u
 		// Note the last value in this expression for r gives how many horizon spans we have initially
 		data.umr.r[i]=.5*(1+x[i])*5;
-		data.res.rho[i]=1.0+2.04*exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
+		data.res.rho[i]=1.0+2.045*exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
 		data.umr.u[i] = sqrt(8*M_PI_3);
 	}
 

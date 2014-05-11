@@ -158,7 +158,7 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 
 	// dA/dt for photon
 	dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
-
+	// dydt[3*N+3]=0;
 	// Derivatives at the origin
 	dydt[0]=0;
 	dydt[N+1]=0;
@@ -236,7 +236,7 @@ int msEvolve(state *s, double t1){
 
 		// Take the step
 		j=gsl_odeiv2_evolve_apply(eve, con, step, &sys, &s->t, t1, &h, (void *) &s->umr);
-		fprintf(stderr, "photon at %f\n", s->umr.photon);
+		// fprintf(stderr, "photon at %f\n", s->umr.photon);
 		// fprintf(stderr, "%e\n", h);
 		// Check for error
 		if (j == -42) {
