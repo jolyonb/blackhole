@@ -122,16 +122,19 @@ int main(){
 	umrat[0][3]=0;
 	umrat[0][4]=data.t;
 
+	printf("%e\t%e\t%e\t%e\t%e\n", umrat[0][0],umrat[0][1],umrat[0][2],umrat[0][3],umrat[0][4]);
+
+
 	// Take 2000 steps
 	// The loop that does the evolution
 	for(i=1;i<2000;i++){
 
-		printf("%e\t%e\t%e\t%e\t%e\n", umrat[i][0],umrat[i][1],umrat[i][2],umrat[i][3],umrat[i][4]);
-
-
 		// Do the timestep
 		if(msEvolve(&data,data.t*1.005,umrat[i])!=0) {
 			fprintf(stderr, "Breaking\n");
+			printf("\n\n");
+			printstate(data);
+			printf("%e\t%e\t%e\t%e\t%e\n", umrat[i][0],umrat[i][1],umrat[i][2],umrat[i][3],umrat[i][4]);
 			break;
 		}
 		// fprintf(stderr, "u=%f\n",umrat[0] );
@@ -141,6 +144,9 @@ int main(){
 
 		printf("\n\n");
 		printstate(data);
+
+		printf("%e\t%e\t%e\t%e\t%e\n", umrat[i][0],umrat[i][1],umrat[i][2],umrat[i][3],umrat[i][4]);
+
 
 		// Computes and prints the coefficients in the density profile (debugging)
 /*
@@ -152,12 +158,6 @@ int main(){
 		// Counter for the purposes of how well things are going
 		// fprintf(stderr, "i=%d\n", i);
 	}
-
-
-	printf("\n\n");
-	printf("%e\t%e\t%e\t%e\t%e\n", umrat[i+1][0],umrat[i+1][1],umrat[i+1][2],umrat[i+1][3],umrat[i+1][4]);
-	printf("\n\n");
-	printf("%e\t%e\t%e\t%e\t%e\n", umrat[i+1][0],umrat[i+1][1],umrat[i+1][2],umrat[i+1][3],umrat[i+1][4]);
 
 
 	// Destroy the plan
