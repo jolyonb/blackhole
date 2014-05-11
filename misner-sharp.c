@@ -322,7 +322,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	umrat[0] = chebInterp(s->umr.u,s->umr.photon*2-1);
 	umrat[1] = chebInterp(s->umr.m,s->umr.photon*2-1);
 	umrat[2] = chebInterp(s->umr.r,s->umr.photon*2-1);
-	umrat[3] = AFRW*(s->umr.photon);
+	umrat[3] = s->umr.photon;
 	umrat[4] = s->t;
 
 	if(s->umr.photon>1){
