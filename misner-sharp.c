@@ -88,7 +88,7 @@ inline static double u0(const dynvar * umr){
 	}
 
 	//u'(0) = U'(0)/R'(0);
-	return ddx0(temp)/ddx0(umr->r);
+	return ddxm0(temp)/ddxm0(umr->r);
 }
 
 // Populates the "rest" of the variables
@@ -200,8 +200,8 @@ int blackholeQ(dynvar *umr){
 	return -1;
 }
 
-// Evolve forwards in time to t1.
-int msEvolve(state *s, double t1){
+// Evolve forwards in time to t1. Throws final u,m,R,A,t at photon in umrat
+int msEvolve(state *s, double t1, double *umrat){
 
 	// Copy of data before step is taken
 	state oldstate;
@@ -280,7 +280,8 @@ int msEvolve(state *s, double t1){
 
 
 		// Set the value of u at the origin (to use better method later)
-		s->umr.u[0]=s->umr.u[1];
+		// s->umr.u[0]=s->umr.u[1];
+		s->umr.u[0]=u0(&s->umr);
 		// Filter u, m and r
 		filterm(s->umr.u);
 		filterm(s->umr.m);
@@ -303,6 +304,13 @@ int msEvolve(state *s, double t1){
 		}
 
 	}
+
+	//Collect u,m,r,A,t where the photon is.
+	umrat[0] = chebInterp(s->umr.u,s->umr.photon*2-1);
+	umrat[1] = chebInterp(s->umr.m,s->umr.photon*2-1);
+	umrat[2] = chebInterp(s->umr.r,s->umr.photon*2-1);
+	umrat[3] = AFRW*(s->umr.photon);
+	umrat[4] = s->t;
 
 	// Check if a black hole is not going to form: if all densities < 1% of original FRW density
 	// Obtain rho
