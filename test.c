@@ -155,6 +155,13 @@ int main(){
 		// fprintf(stderr, "i=%d\n", i);
 	}
 
+
+	printf("\n\n");
+	printf("%e\t%e\t%e\t%e\t%e\n", umrat[0],umrat[1],umrat[2],umrat[3],umrat[4]);
+	printf("\n\n");
+	printf("%e\t%e\t%e\t%e\t%e\n", umrat[0],umrat[1],umrat[2],umrat[3],umrat[4]);
+
+
 	// Destroy the plan
 	fftw_destroy_plan(p);
 
