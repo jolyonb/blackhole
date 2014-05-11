@@ -10,6 +10,14 @@
 #include <fftw3.h> // Fastest fourier transform in the west
 #include "misner-sharp.c" // Routines for evolution of the Misner-Sharp
 #include <string.h> // Used for reading the parameter file
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_spline.h> // Used for interpolating to obtain initial data on the null slice
+
+// Data type for describing a spline
+struct splinetool {
+	gsl_interp_accel *acc;
+	gsl_spline *spline;
+};
 
 static double x[N+1]; // The A values on the grid
 
@@ -68,16 +76,13 @@ double getparam(const char *parameter) {
 // Entry point
 int main(){
 
-	// Number of points
-	int i=N+1;
-
 	// Used in debugging
-	double y[i];
-	double dy[i];
-	double y1[i]; // For analytic comparisons
+	double y[N+1];
+	double dy[N+1];
+	double y1[N+1]; // For analytic comparisons
 
 	// Variable definitions
-	int j; // Random iterator
+	int i, j; // Random iterators
 	state data; // Actual state of the system
 	double umrat[2000][5]; //storage for null slice
 	double to; // t_0 -> initial time
@@ -88,21 +93,22 @@ int main(){
 
 	// Read in the parameters for the density profile
 	double amplitude = getparam("amplitude");
+	double AFRW = getparam("AFRW");
 
 	// Loop backwards to initialize: gridpoints, R, rho and u
-	while(i-- > 0) {
+	i=N+1; while(i-- > 0) {
 		// Gridpoints
 		x[i]=-cos(M_PI*(i)/N);
 
 		// Data: r, rho, u
 		// Note the last value in this expression for r gives how many horizon spans we have initially
-		data.umr.r[i]=.5 * (1+x[i]) * 5;
+		data.umr.r[i]=.5 * (1+x[i]) * AFRW;
 		data.res.rho[i]=1.0 + amplitude * exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
 		data.umr.u[i] = sqrt(8*M_PI_3);
 	}
 
 	// Debugging
-	i=N+1;while(i-->0){
+	i=N+1; while(i-- > 0){
 		y[i]=cos(M_PI*i);
 	}
 
@@ -160,11 +166,58 @@ int main(){
 	}
 
 
+	// Now that we've gotten to here, we need to switch over to the null coordinate system.
+	// Before doing so, we need to construct our initial data.
+	// The initial data needs to be interpolated from the umrat arrays.
+	// We'll use the GSL cubic spline interpolators to perform the interpolation.
+	// Unfortunately, the umrat array can't be given to the interpolator directly, so we'll need to extract it
+	// into individual arrays first.
+	double idatu[2000];
+	double idatm[2000];
+	double idatr[2000];
+	double idata[2000];
+	double idatt[2000];
+	for (j = 0; j < 2000; j++) {
+		idatu[j] = umrat[j][0];
+		idatm[j] = umrat[j][1];
+		idatr[j] = umrat[j][2];
+		idata[j] = umrat[j][3];
+		idatt[j] = umrat[j][4];
+	}
+	int numrows = i + 1; // Number of rows of data in umrat
+
+	// Initialize splines using A as the x variable, and y as m, r, t and u
+	struct splinetool uspline;
+	struct splinetool mspline;
+	struct splinetool rspline;
+	struct splinetool tspline;
+	uspline.acc = gsl_interp_accel_alloc();
+	mspline.acc = gsl_interp_accel_alloc();
+	rspline.acc = gsl_interp_accel_alloc();
+	tspline.acc = gsl_interp_accel_alloc();
+	uspline.spline = gsl_spline_alloc(gsl_interp_cspline, numrows);
+	mspline.spline = gsl_spline_alloc(gsl_interp_cspline, numrows);
+	rspline.spline = gsl_spline_alloc(gsl_interp_cspline, numrows);
+	tspline.spline = gsl_spline_alloc(gsl_interp_cspline, numrows);
+
+	// Construct the splines
+	gsl_spline_init (uspline.spline, idata, idatu, numrows);
+	gsl_spline_init (mspline.spline, idata, idatm, numrows);
+	gsl_spline_init (rspline.spline, idata, idatr, numrows);
+	gsl_spline_init (tspline.spline, idata, idatt, numrows);
+
+	// To get the value from a spline, use the following command
+	// val = gsl_spline_eval (myspline.spline, a, myspline.acc);
+
+	// Print out t at a = 1
+	double val = gsl_spline_eval (tspline.spline, 1.0, tspline.acc);
+	fprintf(stderr,"t at a = 1: %lf\n", val);
+
 	// Destroy the plan
 	fftw_destroy_plan(p);
 
 	// Release the GSL memory
-	// TO DO
+	msRelease();
 
 	// Finished. Phew.
 	fprintf(stderr, "Done!\n");

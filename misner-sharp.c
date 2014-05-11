@@ -14,7 +14,7 @@ typedef struct dynvar {
 	double u[N+1];//New u = U/R
 	double m[N+1];//New m= m/R^2
 	double r[N+1];
-	double photon; // Location of photon: A
+	double photon; // Location of photon: A (between 0 and 1)
 } dynvar;
 
 // Rest of the variables: gamma squared, rho, phi, r', rho'
@@ -322,7 +322,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	umrat[0] = chebInterp(s->umr.u,s->umr.photon*2-1);
 	umrat[1] = chebInterp(s->umr.m,s->umr.photon*2-1);
 	umrat[2] = chebInterp(s->umr.r,s->umr.photon*2-1);
-	umrat[3] = AFRW*(s->umr.photon);
+	umrat[3] = s->umr.photon;
 	umrat[4] = s->t;
 
 	if(s->umr.photon>1){
@@ -354,6 +354,14 @@ void msSetup(double a){
 	con = gsl_odeiv2_control_y_new(1E-10, 1E-7); // Tiny absolute, larger relative
 	// con = gsl_odeiv2_control_y_new(1E-6,0);
 	eve = gsl_odeiv2_evolve_alloc(3*(N+1)+1);
+}
+
+// Routine to release the GSL allocated memory
+void msRelease(){
+	// GSL ODE_INT release
+	gsl_odeiv2_evolve_free(eve);
+	gsl_odeiv2_control_free(con);
+	gsl_odeiv2_step_free(step);
 }
 
 // Boundary condition hack: set up the underdensity at the outer boundary
