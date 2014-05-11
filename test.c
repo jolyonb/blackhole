@@ -93,6 +93,7 @@ int main(){
 
 	// Read in the parameters for the density profile
 	double amplitude = getparam("amplitude");
+	double AFRW = getparam("AFRW");
 
 	// Loop backwards to initialize: gridpoints, R, rho and u
 	i=N+1; while(i-- > 0) {
@@ -101,7 +102,7 @@ int main(){
 
 		// Data: r, rho, u
 		// Note the last value in this expression for r gives how many horizon spans we have initially
-		data.umr.r[i]=.5 * (1+x[i]) * 5;
+		data.umr.r[i]=.5 * (1+x[i]) * AFRW;
 		data.res.rho[i]=1.0 + amplitude * exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
 		data.umr.u[i] = sqrt(8*M_PI_3);
 	}
@@ -127,16 +128,19 @@ int main(){
 	umrat[0][3]=0;
 	umrat[0][4]=data.t;
 
+	printf("%e\t%e\t%e\t%e\t%e\n", umrat[0][0],umrat[0][1],umrat[0][2],umrat[0][3],umrat[0][4]);
+
+
 	// Take 2000 steps
 	// The loop that does the evolution
 	for(i=1;i<2000;i++){
 
-		printf("%e\t%e\t%e\t%e\t%e\n", umrat[i][0],umrat[i][1],umrat[i][2],umrat[i][3],umrat[i][4]);
-
-
 		// Do the timestep
 		if(msEvolve(&data,data.t*1.005,umrat[i])!=0) {
 			fprintf(stderr, "Breaking\n");
+			printf("\n\n");
+			printstate(data);
+			printf("%e\t%e\t%e\t%e\t%e\n", umrat[i][0],umrat[i][1],umrat[i][2],umrat[i][3],umrat[i][4]);
 			break;
 		}
 		// fprintf(stderr, "u=%f\n",umrat[0] );
@@ -146,6 +150,9 @@ int main(){
 
 		printf("\n\n");
 		printstate(data);
+
+		printf("%e\t%e\t%e\t%e\t%e\n", umrat[i][0],umrat[i][1],umrat[i][2],umrat[i][3],umrat[i][4]);
+
 
 		// Computes and prints the coefficients in the density profile (debugging)
 /*
@@ -157,12 +164,6 @@ int main(){
 		// Counter for the purposes of how well things are going
 		// fprintf(stderr, "i=%d\n", i);
 	}
-
-
-	printf("\n\n");
-	printf("%e\t%e\t%e\t%e\t%e\n", umrat[i+1][0],umrat[i+1][1],umrat[i+1][2],umrat[i+1][3],umrat[i+1][4]);
-	printf("\n\n");
-	printf("%e\t%e\t%e\t%e\t%e\n", umrat[i+1][0],umrat[i+1][1],umrat[i+1][2],umrat[i+1][3],umrat[i+1][4]);
 
 
 	// Now that we've gotten to here, we need to switch over to the null coordinate system.
@@ -183,18 +184,34 @@ int main(){
 		idata[j] = umrat[j][3];
 		idatt[j] = umrat[j][4];
 	}
+	int numrows = i + 1; // Number of rows of data in umrat
 
-	// Construct splines using A as the x variable
+	// Initialize splines using A as the x variable, and y as m, r, t and u
 	struct splinetool uspline;
+	struct splinetool mspline;
+	struct splinetool rspline;
+	struct splinetool tspline;
 	uspline.acc = gsl_interp_accel_alloc();
+	mspline.acc = gsl_interp_accel_alloc();
+	rspline.acc = gsl_interp_accel_alloc();
+	tspline.acc = gsl_interp_accel_alloc();
 	uspline.spline = gsl_spline_alloc(gsl_interp_cspline, numrows);
+	mspline.spline = gsl_spline_alloc(gsl_interp_cspline, numrows);
+	rspline.spline = gsl_spline_alloc(gsl_interp_cspline, numrows);
+	tspline.spline = gsl_spline_alloc(gsl_interp_cspline, numrows);
 
-	// Construct the spline
-	gsl_spline_init (myspline.spline, pz, pH, numrows);
+	// Construct the splines
+	gsl_spline_init (uspline.spline, idata, idatu, numrows);
+	gsl_spline_init (mspline.spline, idata, idatm, numrows);
+	gsl_spline_init (rspline.spline, idata, idatr, numrows);
+	gsl_spline_init (tspline.spline, idata, idatt, numrows);
 
-	// To get the value from the spline, use the following command
-	// H(z) = gsl_spline_eval (myspline.spline, z, myspline.acc);
+	// To get the value from a spline, use the following command
+	// val = gsl_spline_eval (myspline.spline, a, myspline.acc);
 
+	// Print out t at a = 1
+	double val = gsl_spline_eval (tspline.spline, 1.0, tspline.acc);
+	fprintf(stderr,"t at a = 1: %lf\n", val);
 
 	// Destroy the plan
 	fftw_destroy_plan(p);
