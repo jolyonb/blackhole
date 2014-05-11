@@ -165,7 +165,12 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	}
 
 	// dA/dt for photon
-	dydt[3*N+3]=chebInterp(stuff.phi,umr->photon*2-1) * sqrt(chebInterp(stuff.gamma2,umr->photon*2-1))/chebInterp(stuff.dr,umr->photon*2-1);
+	double phi = chebInterp(stuff.phi,umr->photon*2-1);
+	double gamma = sqrt(chebInterp(stuff.gamma2,umr->photon*2-1));
+	double dr = 2.0 * chebInterp(stuff.dr,umr->photon*2-1); // Factor of 2 is because the derivatives are done from -1 to 1
+	// instead of 0 to AFRW. The AFRW cancels because A is going from 0 to 1.
+	// This works - checked carefully!
+	dydt[3*N+3] = phi * gamma / dr;
 	// dydt[3*N+3]=0;
 	// Derivatives at the origin
 	dydt[0]=0;
@@ -326,7 +331,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	umrat[4] = s->t;
 
 	if(s->umr.photon>1){
-			fprintf(stderr, "photon hit the boundary: %f > 1\n", s->umr.photon);
+			//fprintf(stderr, "photon hit the boundary: %f > 1\n", s->umr.photon);
 			return 8;
 		}
 
@@ -335,6 +340,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	resvar res;
 	update(s->t,&s->umr,&res);
 	i=N+1; while(i-->0){
+		return 0;
 		if (res.rho[i] > 0.001) return 0;  // Found a value above 1% of original FRW density
 	}
 
