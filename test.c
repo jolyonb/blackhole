@@ -164,7 +164,7 @@ int main(){
 	fftw_destroy_plan(p);
 
 	// Release the GSL memory
-	// TO DO
+	msRelease();
 
 	// Finished. Phew.
 	fprintf(stderr, "Done!\n");
