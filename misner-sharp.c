@@ -14,7 +14,7 @@ typedef struct dynvar {
 	double u[N+1];//New u = U/R
 	double m[N+1];//New m= m/R^2
 	double r[N+1];
-	double photon; // Location of photon: A (between 0 and 1)
+	double photon; // Location of photon: 0 to 1 between A0 and AFRW
 } dynvar;
 
 // Rest of the variables: gamma squared, rho, phi, r', rho'
@@ -36,9 +36,17 @@ typedef struct state {
 	double t; // Time
 } state;
 
+
+
 // Value of R at the boundary at the initial time
 // Ie, size of the domain
 double AFRW;
+
+//regridding ratio
+double RATIO;
+
+//Value of A[0]. becomes != 0 after regridding
+double A0;
 
 // GSL Stuff
 int intfunction(double, const double*, double*, void*);
@@ -93,6 +101,8 @@ inline static double u0(const dynvar * umr){
 }
 
 // Populates the "rest" of the variables
+// origin = 1: do the origin specialness because we don't like div by 0
+// origin = 0: the left boundary is not R = 0.
 static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 
 	// If nothing has changed since we last did our update, then get out
@@ -101,26 +111,29 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 
 	double irhoFRW;
 	int i;
+	int origin = A0==0?1:0;
 
 
 	// Populate gamma2
-	i=N+1; while(i-->1){
+	s->gamma2[0]=8*M_PI_3;
+	i=N+1; while(i-->origin){
 		s->gamma2[i]=gamma2(umr,s,i);
 	}
 	s->gamma2[N]=8*M_PI_3;
-	s->gamma2[0]=8*M_PI_3;
 
 	// Take r and m derivatives. Note that m' is stored in rho temporarily
 	ddxm(umr->r,s->dr);
 	ddxm(umr->m,s->rho);
 
-	// Fill rho
-	i=N+1; while(i-->1){
-		s->rho[i]=rho(umr,s,i);
-	}
 
 	// Fix the origin for rho
 	s->rho[0]=s->rho[0]/(4*M_PI_3*s->dr[0]);
+	// Fill rho
+	i=N+1; while(i-->origin){
+		s->rho[i]=rho(umr,s,i);
+	}
+
+	
 	// Inverse of FRW rho
 	irhoFRW = t * t * M_PI_3 * 32;
 	// Pinning of rho at FRW boundary
@@ -146,6 +159,8 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 	s->lastupdated = t;
 }
 
+
+
 /* Integrator */
 /* dydt = function(y) */
 int intfunction(double t, const double y[], double dydt[], void * params){
@@ -153,12 +168,18 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	int i;
 	resvar stuff; // maybe make this params.
 	dynvar *umr = (void *) y;
-
+	int origin = A0==0?1:0;
 	// Calculate the rest of the values (used in integration)
 	update(t,umr,&stuff);
 
+
+	// Derivatives at the origin
+	dydt[0]=0;
+	dydt[N+1]=0;
+	dydt[2*N+2]=0;
+
 	// Fill integration vector
-	i=N+1; while(i-- > 1){
+	i=N+1; while(i-- > origin){
 		dydt[i]=dudt(umr,&stuff,i);
 		dydt[i+N+1]=dmdt(umr,&stuff,i);
 		dydt[i+2*N+2]=drdt(umr,&stuff,i);
@@ -172,6 +193,7 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	// This works - checked carefully!
 	dydt[3*N+3] = phi * gamma / dr;
 	// dydt[3*N+3]=0;
+	
 	// Derivatives at the origin
 	dydt[0]=0;
 	dydt[N+1]=0;
@@ -211,6 +233,14 @@ int blackholeQ(dynvar *umr){
 		if (umr->m[i] * umr->r[i] < 4 * M_PI_3 && ready ==1) return i;
 	}
 	return -1;
+}
+
+void regrid(state *s){
+	rebasem(s->umr.u);
+	rebasem(s->umr.m);
+	rebasem(s->umr.r);
+	A0 = RATIO * A0 + (1-RATIO) * AFRW;
+	s->umr.photon = s->umr.photon / RATIO + (1 - 1/RATIO);
 }
 
 // Evolve forwards in time to t1. Throws final u,m,R,A,t at photon in umrat
@@ -327,7 +357,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	umrat[0] = chebInterp(s->umr.u,s->umr.photon*2-1);
 	umrat[1] = chebInterp(s->umr.m,s->umr.photon*2-1);
 	umrat[2] = chebInterp(s->umr.r,s->umr.photon*2-1);
-	umrat[3] = s->umr.photon;
+	umrat[3] = s->umr.photon + (1-s->umr.photon) * A0/AFRW;
 	umrat[4] = s->t;
 
 	if(s->umr.photon>1){
@@ -340,8 +370,6 @@ int msEvolve(state *s, double t1, double *umrat){
 	resvar res;
 	update(s->t,&s->umr,&res);
 	i=N+1; while(i-->0){
-		return 0;
-		if (res.rho[i] > 0.001) return 0;  // Found a value above 1% of original FRW density
 	}
 
 	// If we got to here, we have no overdensities to speak of
@@ -354,7 +382,7 @@ int msEvolve(state *s, double t1, double *umrat){
 // a is the rebasing size
 void msSetup(double a){
 	// Spectral setup
-	spectSetup(a);
+	spectSetup(RATIO=a);
 	// GSL ODE_INT setup
 	step = gsl_odeiv2_step_alloc(gsl_odeiv2_step_rkf45, 3*(N+1)+1);
 	con = gsl_odeiv2_control_y_new(1E-10, 1E-7); // Tiny absolute, larger relative
@@ -364,7 +392,7 @@ void msSetup(double a){
 
 // Routine to release the GSL allocated memory
 void msRelease(){
-	// GSL ODE_INT release
+// GSL ODE_INT release
 	gsl_odeiv2_evolve_free(eve);
 	gsl_odeiv2_control_free(con);
 	gsl_odeiv2_step_free(step);
@@ -441,5 +469,5 @@ void msInit(state *s){
 	s->t = sqrt(M_1_PI * 3 / 32);
 	// Outer boundary at starting time (how many horizons we span initially)
 	AFRW = umr->r[N];
-
+	A0=0;
 }
