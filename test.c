@@ -9,6 +9,7 @@
 #include <math.h>
 #include <fftw3.h> // Fastest fourier transform in the west
 #include "misner-sharp.c" // Routines for evolution of the Misner-Sharp
+#include <string.h> // Used for reading the parameter file
 
 static double x[N+1]; // The A values on the grid
 
@@ -21,8 +22,51 @@ void printstate(state data){
 	}
 }
 
+// Reads in a single parameter from the param.ini file
+// The input "parameter" is a null terminated string
+// params.ini is a list of parameter names, followed by a space and a number
+double getparam(const char *parameter) {
+
+	FILE *ifp;
+	char *mode = "r";
+	char paramname[17];  /* At most 16 characters, + one extra for null char. */
+	double val;
+
+	// Open the file
+	ifp = fopen("params.ini", mode);
+
+	// Check to make sure it's opened
+	if (ifp == NULL) {
+	  fprintf(stderr, "Fatal Error: Can't open params.ini.\n");
+	  exit(1);
+	}
+
+	// Loop through the file, trying to find the parameter we want
+	while (!feof(ifp)) {
+		if (fscanf(ifp, "%s %lf", paramname, &val) == 2) {
+			if (strncmp(parameter, paramname, 17) == 0) {
+				// Found the parameter we're after.
+				// Close the file
+				fclose(ifp);
+				// Return the value
+				return val;
+			}
+		}
+	}
+
+	// Close the file
+	fclose(ifp);
+
+	// We couldn't find that parameter
+	fprintf(stderr, "Fatal Error: Can't find parameter %s in params.ini.\n", parameter);
+	exit(1);
+
+	return 0.0;
+}
+
 // Entry point
 int main(){
+
 	// Number of points
 	int i=N+1;
 
@@ -40,6 +84,9 @@ int main(){
 	// Initialize matrices for integrals, derivatives, integrator, etc
 	msSetup(0.8);
 
+	// Read in the parameters for the density profile
+	double amplitude = getparam("amplitude");
+
 	// Loop backwards to initialize: gridpoints, R, rho and u
 	while(i-- > 0) {
 		// Gridpoints
@@ -47,8 +94,8 @@ int main(){
 
 		// Data: r, rho, u
 		// Note the last value in this expression for r gives how many horizon spans we have initially
-		data.umr.r[i]=.5*(1+x[i])*5;
-		data.res.rho[i]=1.0+2.045*exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
+		data.umr.r[i]=.5 * (1+x[i]) * 5;
+		data.res.rho[i]=1.0 + amplitude * exp(-.5*(data.umr.r[i]/(.5))*(data.umr.r[i]/(.5)));
 		data.umr.u[i] = sqrt(8*M_PI_3);
 	}
 
