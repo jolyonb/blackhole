@@ -382,6 +382,14 @@ void msSetup(double a){
 	eve = gsl_odeiv2_evolve_alloc(3*(N+1)+1);
 }
 
+// Routine to release the GSL allocated memory
+void msRelease(){
+// GSL ODE_INT release
+	gsl_odeiv2_evolve_free(eve);
+	gsl_odeiv2_control_free(con);
+	gsl_odeiv2_step_free(step);
+}
+
 // Boundary condition hack: set up the underdensity at the outer boundary
 void bcHack(double *m, double mFRW){
 	double a[N+1];
