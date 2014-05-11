@@ -228,8 +228,10 @@ int msEvolve(state *s, double t1, double *umrat){
 
 		// Assert the CFL condition
 		oldstep = s->res.phi[0] * (1 - cos(M_PI/N)) / 2;
-		if (h > oldstep)
+		if (h > oldstep){
+			// fprintf(stderr, "CFL hit\n");
 			h = oldstep;
+		}
 
 		// Copy data before taking the step
 		oldstate.t = s->t;
@@ -311,6 +313,9 @@ int msEvolve(state *s, double t1, double *umrat){
 			return 1;
 		}
 
+		if(s->umr.photon>1)
+			break;
+
 	}
 
 	//Collect u,m,r,A,t where the photon is.
@@ -320,12 +325,17 @@ int msEvolve(state *s, double t1, double *umrat){
 	umrat[3] = AFRW*(s->umr.photon);
 	umrat[4] = s->t;
 
+	if(s->umr.photon>1){
+			fprintf(stderr, "photon hit the boundary: %f > 1\n", s->umr.photon);
+			return 8;
+		}
+
 	// Check if a black hole is not going to form: if all densities < 1% of original FRW density
 	// Obtain rho
 	resvar res;
 	update(s->t,&s->umr,&res);
 	i=N+1; while(i-->0){
-		if (res.rho[i] > 0.01) return 0;  // Found a value above 1% of original FRW density
+		if (res.rho[i] > 0.001) return 0;  // Found a value above 1% of original FRW density
 	}
 
 	// If we got to here, we have no overdensities to speak of

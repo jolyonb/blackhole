@@ -79,7 +79,7 @@ int main(){
 	// Variable definitions
 	int j; // Random iterator
 	state data; // Actual state of the system
-	double umrat[5]; //storage for null slice
+	double umrat[2000][5]; //storage for null slice
 	double to; // t_0 -> initial time
 	fftw_plan p; // Plan for the the FFTs
 
@@ -116,23 +116,21 @@ int main(){
 	update(data.t, &data.umr, &data.res);
 
 	//inital photon stuff
-	umrat[0]=data.umr.u[0];
-	umrat[1]=0;
-	umrat[2]=0;
-	umrat[3]=0;
-	umrat[4]=data.t;
+	umrat[0][0]=data.umr.u[0];
+	umrat[0][1]=0;
+	umrat[0][2]=0;
+	umrat[0][3]=0;
+	umrat[0][4]=data.t;
 
 	// Take 2000 steps
-	i=2000;
-
 	// The loop that does the evolution
-	while(i-->0){
+	for(i=1;i<2000;i++){
 
-		printf("%e\t%e\t%e\t%e\t%e\n", umrat[0],umrat[1],umrat[2],umrat[3],umrat[4]);
+		printf("%e\t%e\t%e\t%e\t%e\n", umrat[i][0],umrat[i][1],umrat[i][2],umrat[i][3],umrat[i][4]);
 
 
 		// Do the timestep
-		if(msEvolve(&data,data.t*1.005,umrat)!=0) {
+		if(msEvolve(&data,data.t*1.005,umrat[i])!=0) {
 			fprintf(stderr, "Breaking\n");
 			break;
 		}
@@ -154,6 +152,13 @@ int main(){
 		// Counter for the purposes of how well things are going
 		// fprintf(stderr, "i=%d\n", i);
 	}
+
+
+	printf("\n\n");
+	printf("%e\t%e\t%e\t%e\t%e\n", umrat[i+1][0],umrat[i+1][1],umrat[i+1][2],umrat[i+1][3],umrat[i+1][4]);
+	printf("\n\n");
+	printf("%e\t%e\t%e\t%e\t%e\n", umrat[i+1][0],umrat[i+1][1],umrat[i+1][2],umrat[i+1][3],umrat[i+1][4]);
+
 
 	// Destroy the plan
 	fftw_destroy_plan(p);
