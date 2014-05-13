@@ -16,6 +16,8 @@ static double DDXME[N+1][N+1]; // Even mode derivatives
 static double INTME[N+1][N+1]; // Even mode integration
 static double FILTERM[N+1][N+1]; // Matrix for filtering
 
+static fftw_plan CHEBPLAN; //fftw plan for Chebyshev coefficients.
+
 // BLAS Routines
 // Matrix . vector
 extern void dgemv_(const char *, const int *, const int *, const double *, const double *, const int *, const double *, const int *, const double *, double *, const int *);
@@ -340,6 +342,8 @@ static void plintme(long double *x){
 void spectSetup(double a){
 	// Sets up doing spectral method things using matrix stuff. a is the ratio of the rebasing.
 	long double x[(N+1)*4];
+	CHEBPLAN = fftw_plan_r2r_1d(N+1,DDXM[0],DDXM[0],FFTW_REDFT00,FFTW_ESTIMATE);
+
 	mkwi(x); // Grid points and weights
 	plddxm(x); // Derivs
 	plintm(x); // Ints
@@ -410,14 +414,14 @@ void ddxme(const double *y, double *dy){
 	dgemv_("n",n,n,a,&DDXME[0][0],n,y,n+1,a+1,dy,n+1);
 }
 
+
 // Interpolate data from Chebyshev polynomials
 // y is input data
 // x is where you want the value
 double chebInterp(double *y, double x){
 	// Compute coefficients in phase space
 	double a[N+1]; //coefficients
-	fftw_plan p = fftw_plan_r2r_1d(N+1,y,a,FFTW_REDFT00,FFTW_ESTIMATE);
-	fftw_execute(p);
+	fftw_execute_r2r(CHEBPLAN,y,a);
 
 	// More variables
 	double b[2];
@@ -432,9 +436,6 @@ double chebInterp(double *y, double x){
 	i=N-2; while(i-->1){
 		b[i&1] = a[i] - 2*x*b[(i+1)&1] - b[i&1];
 	}
-
-	// Destroy the plan
-	fftw_destroy_plan(p);
 
 	// Return the result
 	return (a[0]/2 - x*b[1] - b[0])/N;

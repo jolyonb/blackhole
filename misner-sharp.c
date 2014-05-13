@@ -361,7 +361,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	umrat[4] = s->t;
 
 	if(s->umr.photon>1){
-			//fprintf(stderr, "photon hit the boundary: %f > 1\n", s->umr.photon);
+			fprintf(stderr, "photon hit the boundary: %f > 1\n", s->umr.photon);
 			return 8;
 		}
 
@@ -370,6 +370,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	resvar res;
 	update(s->t,&s->umr,&res);
 	i=N+1; while(i-->0){
+		if(res.rho[i]>0.0001) return 0;
 	}
 
 	// If we got to here, we have no overdensities to speak of
