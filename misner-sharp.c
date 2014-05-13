@@ -141,6 +141,8 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 	// Some filtering
 	filterm(s->rho);
 	filterm(s->gamma2);
+	// s->rho[N]=1/irhoFRW;
+	// s->gamma2[N]=8*M_PI_3;
 
 	// Calculate drho
 	ddxm(s->rho,s->drho);
@@ -192,12 +194,7 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	// instead of 0 to AFRW. The AFRW cancels because A is going from 0 to 1.
 	// This works - checked carefully!
 	dydt[3*N+3] = phi * gamma / dr;
-	// dydt[3*N+3]=0;
 	
-	// Derivatives at the origin
-	dydt[0]=0;
-	dydt[N+1]=0;
-	dydt[2*N+2]=0;
 
 	// Sanity checks
 	i=N+1; while(i-->0){
@@ -326,7 +323,7 @@ int msEvolve(state *s, double t1, double *umrat){
 
 		// Set the value of u at the origin (to use better method later)
 		// s->umr.u[0]=s->umr.u[1];
-		s->umr.u[0]=u0(&s->umr);
+		if(A0==0) s->umr.u[0]=u0(&s->umr);
 		// Filter u, m and r
 		filterm(s->umr.u);
 		filterm(s->umr.m);
