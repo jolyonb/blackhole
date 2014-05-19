@@ -127,7 +127,7 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 
 
 	// Fix the origin for rho
-	s->rho[0]=s->rho[0]/(4*M_PI_3*s->dr[0]);
+	if (origin) s->rho[0]=s->rho[0]/(4*M_PI_3*s->dr[0]);
 	// Fill rho
 	i=N+1; while(i-->origin){
 		s->rho[i]=rho(umr,s,i);
@@ -238,6 +238,7 @@ void regrid(state *s){
 	rebasem(s->umr.r);
 	A0 = RATIO * A0 + (1-RATIO) * AFRW;
 	s->umr.photon = s->umr.photon / RATIO + (1 - 1/RATIO);
+	s->res.lastupdated = -1;
 }
 
 // Evolve forwards in time to t1. Throws final u,m,R,A,t at photon in umrat
@@ -329,8 +330,10 @@ int msEvolve(state *s, double t1, double *umrat){
 		filterm(s->umr.m);
 		filterm(s->umr.r);
 		// Fix boundary conditions
-		s->umr.m[0]=0;
-		s->umr.r[0]=0;
+		if(A0==0) {
+			s->umr.m[0]=0;
+			s->umr.r[0]=0;
+		}
 		// Will need to fix u boundary condition later too
 
 		// Whole bunch of pinning that didn't work out so well
@@ -345,6 +348,7 @@ int msEvolve(state *s, double t1, double *umrat){
 			return 1;
 		}
 
+
 		if(s->umr.photon>1)
 			break;
 
@@ -357,6 +361,11 @@ int msEvolve(state *s, double t1, double *umrat){
 	umrat[3] = s->umr.photon + (1-s->umr.photon) * A0/AFRW;
 	umrat[4] = s->t;
 
+	if (s->umr.photon > .3 && A0 < .5 * AFRW){
+		fprintf(stderr, "Regridding\n");
+		regrid(s);
+	}
+
 	if(s->umr.photon>1){
 			fprintf(stderr, "photon hit the boundary: %f > 1\n", s->umr.photon);
 			return 8;
@@ -367,7 +376,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	resvar res;
 	update(s->t,&s->umr,&res);
 	i=N+1; while(i-->0){
-		if(res.rho[i]>0.0001) return 0;
+		if(res.rho[i]>0.000001) return 0;
 	}
 
 	// If we got to here, we have no overdensities to speak of
@@ -403,14 +412,24 @@ void bcHack(double *m, double mFRW){
 	//do some integration
 	int i;
 	i=N+1; while(i-->0) a[i]=0;
-	a[N-2]=1;
-	a[N-3]=7;
-	a[N-4]=21;
-	a[N-5]=35;
-	a[N-6]=35;
-	a[N-7]=21;
-	a[N-8]=7;
-	a[N-9]=1;
+	// a[N-2]=1;
+	// a[N-3]=7;
+	// a[N-4]=21;
+	// a[N-5]=35;
+	// a[N-6]=35;
+	// a[N-7]=21;
+	// a[N-8]=7;
+	// a[N-9]=1;
+
+	a[N-12]=1;
+	a[N-13]=7;
+	a[N-14]=21;
+	a[N-15]=35;
+	a[N-16]=35;
+	a[N-17]=21;
+	a[N-18]=7;
+	a[N-19]=1;
+
 
 	intm(a,ma);
 
