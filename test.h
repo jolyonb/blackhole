@@ -26,18 +26,22 @@ typedef struct splinetool {
 static double A[N+1];
 
 // Prints out current data
-void printstate(state data);
+void printstate(state data, FILE*);
 
 // Reads parameters from the parameter file
 double getparam(const char *parameter);
+int getintparam(const char *parameter);
 
-// Prints out umr and t data to the given file
-void dumpdata(state data, const char *filename);
+// Prints out initial data on the null slice (A, u, m, r, t)
+void printnullinitdata(state data, FILE*);
 
 // Dumps an array to disc for debug purposes
 void dumparray(double *, int num, const char *filename);
 
 // Constructs initial data on the null slice
 void constructnulldata(double umrat[][5], int, state *);
+
+// Prints out data on the null geodesic
+void printgeodesicdata(double umrat[][5], int, FILE*);
 
 #endif /* TEST_H_ */
