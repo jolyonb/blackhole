@@ -8,12 +8,71 @@
 #include "test.h"
 
 // Entry point
-int main(){
-
+int main(int argc, char **argv){
 	// Variable definitions
-	int i, j; // Random iterators
+	int i,j; // Random iterators
 	state data; // Actual state of the system
-	double umrat[2000][5]; //storage for null slice
+	double umrat[2000][5]; // Storage for null slice
+	int result = 0; // Response from functions
+
+/*
+ ******************************* File Init *********************************
+ */
+
+	// Sort out the command line arguments
+	char *outfilename = NULL;
+	char name_default[] = "output";
+	if (argc > 1) {
+		// We have a command line argument. Assume it's a filename.
+		outfilename = argv[1];
+	} else {
+		outfilename = name_default;
+	}
+	// Print a message about the output filenames
+	printf("Outputting to files: %s-xxxx.dat\n", outfilename);
+
+	// All the file handles we want to print to
+	FILE *nullgeodesic;
+	FILE *msdata;  // Misner-Sharp data
+	FILE *nullinit;  // Misner-Sharp data
+	// Open the files
+	// Null geodesic first
+	char filenamebuffer[1024];
+	strcpy (filenamebuffer, outfilename);
+	strcat (filenamebuffer, "-null.dat");
+	nullgeodesic = fopen(filenamebuffer, "w");
+	// Check to make sure that it was opened
+	if (nullgeodesic == NULL) {
+		fprintf(stderr, "Fatal Error: Can't open output file %s\n", filenamebuffer);
+		exit(1);
+	}
+	// Print the header line
+	fprintf(nullgeodesic, "#u\t\tM\t\tR\t\tA\t\tt\n");
+
+	// Misner-Sharp data next
+	strcpy (filenamebuffer, outfilename);
+	strcat (filenamebuffer, "-ms.dat");
+	msdata = fopen(filenamebuffer, "w");
+	// Check to make sure that it was opened
+	if (msdata == NULL) {
+		fprintf(stderr, "Fatal Error: Can't open output file %s\n", filenamebuffer);
+		exit(1);
+	}
+
+	// Null slice initial data output
+	strcpy (filenamebuffer, outfilename);
+	strcat (filenamebuffer, "-nullinit.dat");
+	nullinit = fopen(filenamebuffer, "w");
+	fprintf(nullinit, "#u\t\tM\t\tR\t\tA\t\tt\n");
+	// Check to make sure that it was opened
+	if (nullinit == NULL) {
+		fprintf(stderr, "Fatal Error: Can't open output file %s\n", filenamebuffer);
+		exit(1);
+	}
+
+/*
+ ******************************* Data initialization *********************************
+ */
 
 	// Initialize matrices for integrals, derivatives, integrator, etc
 	msSetup(0.8);
@@ -21,6 +80,8 @@ int main(){
 	// Read in the parameters for the density profile
 	double amplitude = getparam("amplitude");
 	double AFRW = getparam("AFRW");
+	double timestep = getparam("timestep");
+	int maxloop = getintparam("maxloop");
 
 	// Loop backwards to initialize: gridpoints, R, rho and u
 	i=N+1; while(i-- > 0) {
@@ -55,31 +116,16 @@ int main(){
 	// Construct the plan to grab data and output derivative
 	p=fftw_plan_r2r_1d(N+1,data.res.rho,y,FFTW_REDFT00,FFTW_ESTIMATE);
 
-	// Print out the first line of the photon data
-	printf("%e\t%e\t%e\t%e\t%e\n", umrat[0][0],umrat[0][1],umrat[0][2],umrat[0][3],umrat[0][4]);
+/*
+ ******************************* Misner-Sharp Loop *********************************
+ */
 
-	// Take 2000 steps at most
 	// The loop that does the evolution
-	for(i=1;i<2000;i++){
+	// Take maxloop steps at most
+	for(i=0;i<maxloop;i++){
 
-		// Do the timestep
-		if(msEvolve(&data,data.t*1.005,umrat[i])!=0) {
-			fprintf(stderr, "Breaking\n");
-			printf("\n\n");
-			printstate(data);
-			printf("%e\t%e\t%e\t%e\t%e\n", umrat[i][0],umrat[i][1],umrat[i][2],umrat[i][3],umrat[i][4]);
-			break;
-		}
-		// fprintf(stderr, "u=%f\n",umrat[0] );
-
-		// Go and updates values so that we can print them
-		update(data.t, &data.umr, &data.res);
-
-		printf("\n\n");
-		printstate(data);
-
-		printf("%e\t%e\t%e\t%e\t%e\n", umrat[i][0],umrat[i][1],umrat[i][2],umrat[i][3],umrat[i][4]);
-
+		// Counter for the purposes of how well things are going (debugging)
+//		printf("i=%d\n", i);
 
 		// Computes and prints the coefficients in the density profile (debugging)
 //		fftw_execute(p);
@@ -87,14 +133,56 @@ int main(){
 //			printf("%e\n",y[j]);
 //		}
 
-		// Counter for the purposes of how well things are going
-//		fprintf(stderr, "i=%d\n", i);
+		// Go and updates values so that we can print them
+		update(data.t, &data.umr, &data.res);
+
+		// And go and print them :-)
+		// (Note that this also prints out initial data before any timesteps are made)
+		printstate(data, msdata);
+		printgeodesicdata(umrat, i, nullgeodesic);
+
+		// Check the result of the previous timestep to see if we want out
+		if(result!=0) break;
+
+		// Take a timestep
+		result = msEvolve(&data,data.t*timestep,umrat[i]);
+
 	}
+
+	// Release all file handles that are no longer necessary
+	fclose(nullgeodesic);
+	fclose(msdata);
+
+	// Make a nice statement about why the loop terminated
+	printf("Misner-Sharp Evolution ended: ");
+	if (result == 1) {
+		printf("Aborted due to error.\n");
+	} else if (result == 8) {
+		printf("Null geodesic hit outer boundary.\n");
+	} else if (result == 2) {
+		printf("Black hole formation detected.\n");
+	} else {
+		printf("Unknown reason.\n");
+	}
+
+/*
+ ******************************* Null initialization *********************************
+ */
 
 	// Now that we've gotten to here, we need to switch over to the null coordinate system.
 	// Before doing so, we need to construct our initial data.
-	// i + 1 is the number of rows of data in umrat
-	constructnulldata(umrat, i+1, &data);
+	// i is the number of rows of data in umrat
+	constructnulldata(umrat, i, &data);
+
+	// Print the initial data on the null slice to file
+	printnullinitdata(data, nullinit);
+	// And close the file handle that is no longer necessary
+	fclose(nullinit);
+
+
+/*
+ ******************************* Cleanup *********************************
+ */
 
 	// Destroy the plan
 	fftw_destroy_plan(p);
@@ -103,7 +191,7 @@ int main(){
 	msRelease();
 
 	// Finished. Phew.
-	fprintf(stderr, "Done!\n");
+	printf("Done!\n");
 	return 0;
 }
 
@@ -171,19 +259,6 @@ void constructnulldata(double umrat[][5], int numrows, state *data) {
 	// Reset the update flag on the rest of the data
 	data->res.lastupdated = -1;
 
-	// Dump the initial data to file (debugging)
-	dumpdata(*data, "nullinit.dat");
-
-}
-
-// Takes a state, prints out a block of data of all the variables
-void printstate(state data){
-	int j;
-	printf("#A\t\tu\t\tm\t\tr\t\trho\t\tphi\t\tgamma^2\t\tr'\t\trho'\t\tphot\n");
-	for(j=0;j<(N+1);j++){
-		printf("%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\n",A[j],data.umr.u[j],data.umr.m[j],data.umr.r[j],data.res.rho[j],data.res.phi[j],data.res.gamma2[j],data.res.dr[j],data.res.drho[j],data.umr.photon*AFRW,chebInterp(data.res.rho,data.umr.photon*2-1));
-	}
-	printf("\n\n");
 }
 
 // Reads in a single parameter from the param.ini file
@@ -227,28 +302,71 @@ double getparam(const char *parameter) {
 	return 0.0;
 }
 
-// Prints out umr and t data to the given file (overwriting it)
-void dumpdata(state data, const char *filename){
+// Same as above, except it returns an integer
+int getintparam(const char *parameter) {
+
+	FILE *ifp;
+	char paramname[17];  /* At most 16 characters, + one extra for null char. */
+	int val;
 
 	// Open the file
-	FILE *ofp;
-	ofp = fopen(filename, "w");
+	ifp = fopen("params.ini", "r");
 
-	// Check to make sure that it was opened
-	if (ofp == NULL) {
-		fprintf(stderr, "Can't open output file %s!\n", filename);
-		exit(1);
+	// Check to make sure it's opened
+	if (ifp == NULL) {
+	  fprintf(stderr, "Fatal Error: Can't open params.ini.\n");
+	  exit(1);
 	}
 
-	// Print the data
-	int j;
-	fprintf(ofp, "#A\t\tu\t\tm\t\tr\t\tt = %#.6e\n", data.t);
-	for(j=0; j<(N+1); j++){
-		fprintf(ofp, "%#.6e\t%#.6e\t%#.6e\t%#.6e\n",A[j],data.umr.u[j],data.umr.m[j],data.umr.r[j]);
+	// Loop through the file, trying to find the parameter we want
+	while (!feof(ifp)) {
+		if (fscanf(ifp, "%s %d", paramname, &val) == 2) {
+			if (strncmp(parameter, paramname, 17) == 0) {
+				// Found the parameter we're after.
+				// Close the file
+				fclose(ifp);
+				// Return the value
+				return val;
+			}
+		}
 	}
 
 	// Close the file
-	fclose(ofp);
+	fclose(ifp);
+
+	// We couldn't find that parameter
+	fprintf(stderr, "Fatal Error: Can't find parameter %s in params.ini.\n", parameter);
+	exit(1);
+
+	return 0;
+}
+
+// Takes a state, prints out a block of data of all the variables to the appropriate file
+void printstate(state data, FILE *handle){
+	int j;
+	fprintf(handle, "#A\t\tu\t\tm\t\tr\t\trho\t\tphi\t\tgamma^2\t\tr'\t\trho'\t\tphot\n");
+	for(j=0;j<(N+1);j++){
+		fprintf(handle, "%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\n",A[j],data.umr.u[j],data.umr.m[j],data.umr.r[j],data.res.rho[j],data.res.phi[j],data.res.gamma2[j],data.res.dr[j],data.res.drho[j],data.umr.photon*AFRW,chebInterp(data.res.rho,data.umr.photon*2-1));
+	}
+	fprintf(handle, "\n\n");
+}
+
+// Prints information on initial data on the null slice (A, u, m, r, t) to file
+void printnullinitdata(state data, FILE *handle){
+
+	int j;
+	fprintf(handle, "#A\t\tu\t\tm\t\tr\t\tt = %#.6e\n", data.t);
+	for(j=0; j<(N+1); j++){
+		fprintf(handle, "%#.6e\t%#.6e\t%#.6e\t%#.6e\n",A[j],data.umr.u[j],data.umr.m[j],data.umr.r[j]);
+	}
+
+}
+
+// Prints information on the null geodesic to file
+void printgeodesicdata(double umrat[][5], int index, FILE *handle) {
+
+	fprintf(handle, "%e\t%e\t%e\t%e\t%e\n", umrat[index][0],umrat[index][1],umrat[index][2],umrat[index][3],umrat[index][4]);
+
 }
 
 // Quick routine to dump an array to disc for debug purposes
@@ -261,7 +379,7 @@ void dumparray(double *data, int num, const char *filename){
 
 	// Make sure it opened
 	if (ofp == NULL) {
-		fprintf(stderr, "Can't open output file %s!\n", filename);
+		fprintf(stderr, "Fatal Error: Can't open output file %s\n", filename);
 		exit(1);
 	}
 
