@@ -253,6 +253,9 @@ int msEvolve(state *s, double t1, double *umrat){
 	int i=0,j;
 	while(s->t<t1){ // Before time t1, keep on evolving
 
+		// printf("1something els%e\n", h);
+
+
 		if (h == 0)
 			return 1;
 
@@ -282,6 +285,8 @@ int msEvolve(state *s, double t1, double *umrat){
 		// fprintf(stderr, "photon at %f\n", s->umr.photon);
 		// fprintf(stderr, "%e\n", h);
 		// Check for error
+	// printf("something5 els%e \t %e\n", h, oldstep);
+
 		if (j == -42) {
 			s->t = oldstate.t;
 			h = oldstep / 10;
@@ -295,6 +300,9 @@ int msEvolve(state *s, double t1, double *umrat){
 			continue;
 		}
 		if(j!=GSL_SUCCESS) return 1;
+
+	// printf("something2 els%e\n", h);
+
 
 		// Call update on the data
 		update(s->t, &s->umr, &s->res);
@@ -320,6 +328,7 @@ int msEvolve(state *s, double t1, double *umrat){
 			}
 			continue;
 		}
+	printf("hello 1\n");
 
 
 		// Set the value of u at the origin (to use better method later)
@@ -344,13 +353,15 @@ int msEvolve(state *s, double t1, double *umrat){
 
 		// Check for black hole formation
 		if(blackholeQ(&s->umr)!=-1){
-			fprintf(stderr, "black hole! at %f\n",AFRW*.5*(1-cos(M_PI*blackholeQ(&s->umr)/N)));
+			// fprintf(stderr, "black hole! at %f\n",AFRW*.5*(1-cos(M_PI*blackholeQ(&s->umr)/N)));
 			return 1;
 		}
 
 
 		if(s->umr.photon>1)
 			break;
+	// printf("something 4els%e\n", h);
+
 
 	}
 
@@ -362,9 +373,11 @@ int msEvolve(state *s, double t1, double *umrat){
 	umrat[4] = s->t;
 
 	if (s->umr.photon > .3 && A0 < .5 * AFRW){
-		fprintf(stderr, "Regridding\n");
+		// fprintf(stderr, "Regridding\n");
 		regrid(s);
 	}
+
+	printf("%e\n",h);
 
 	if(s->umr.photon>1){
 			fprintf(stderr, "photon hit the boundary: %f > 1\n", s->umr.photon);

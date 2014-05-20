@@ -130,7 +130,7 @@ static void exintl(dplan *d, long double a, long double *x){
 	int i;
 	long double b=0;
 
-#pragma GCC ivdep
+// #pragma GCC ivdep
 	i=N; while(i-->1){
 		//for(i=0;i<N;i++){
 		d->yin[i]*=IWEIGHTS[i]; // note: input is destroyed. don't think we care.
@@ -138,7 +138,7 @@ static void exintl(dplan *d, long double a, long double *x){
 
 	fftwl_execute(d->p[0]);
 
-#pragma GCC ivdep
+// #pragma GCC ivdep
 	i=N; while(i-->2){
 		//  for(i=2;i<N+1;i++){
 		b+=(i)*TY[i]*(1-(N+i&1));

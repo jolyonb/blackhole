@@ -343,17 +343,18 @@ int getintparam(const char *parameter) {
 
 // Takes a state, prints out a block of data of all the variables to the appropriate file
 void printstate(state data, FILE *handle){
+	return;
 	int j;
 	fprintf(handle, "#A\t\tu\t\tm\t\tr\t\trho\t\tphi\t\tgamma^2\t\tr'\t\trho'\t\tphot\n");
 	for(j=0;j<(N+1);j++){
-		fprintf(handle, "%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\n",A[j],data.umr.u[j],data.umr.m[j],data.umr.r[j],data.res.rho[j],data.res.phi[j],data.res.gamma2[j],data.res.dr[j],data.res.drho[j],data.umr.photon*AFRW,chebInterp(data.res.rho,data.umr.photon*2-1));
+		fprintf(handle, "%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\t%#.6e\n",A[j]*(AFRW - A0) + A0,data.umr.u[j],data.umr.m[j],data.umr.r[j],data.res.rho[j],data.res.phi[j],data.res.gamma2[j],data.res.dr[j],data.res.drho[j],data.umr.photon*AFRW,chebInterp(data.res.rho,data.umr.photon*2-1));
 	}
 	fprintf(handle, "\n\n");
 }
 
 // Prints information on initial data on the null slice (A, u, m, r, t) to file
 void printnullinitdata(state data, FILE *handle){
-
+	return;
 	int j;
 	fprintf(handle, "#A\t\tu\t\tm\t\tr\t\tt = %#.6e\n", data.t);
 	for(j=0; j<(N+1); j++){
@@ -364,7 +365,7 @@ void printnullinitdata(state data, FILE *handle){
 
 // Prints information on the null geodesic to file
 void printgeodesicdata(double umrat[][5], int index, FILE *handle) {
-
+	return;
 	fprintf(handle, "%e\t%e\t%e\t%e\t%e\n", umrat[index][0],umrat[index][1],umrat[index][2],umrat[index][3],umrat[index][4]);
 
 }
