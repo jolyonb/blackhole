@@ -12,3 +12,6 @@
 
 # Custom make configuration
 /local.mk
+
+# Dependency information
+/.deps

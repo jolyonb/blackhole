@@ -14,12 +14,22 @@ LDLIBS = -lfftw3 -lfftw3l -lgsl -lblas -lgslcblas -lm
 
 # Make rules
 
-OBJECTS = spect.o misner-sharp.o
+OBJECTS = test.o spect.o misner-sharp.o
 
 .PHONY: all
 all: test
 
-test: spect.o misner-sharp.o
+test: $(OBJECTS)
 
 clean:
-	rm -f *.o test
+	rm -rf *.o test .deps
+
+# Fancy dependency stuff
+
+DEPDIR = .deps
+
+%.o : %.c
+	@mkdir -p .deps && $(CC) -MM $(CFLAGS) $< -MP -MF $(DEPDIR)/$*.P
+	$(COMPILE.c) -o $@ $<
+
+-include $(OBJECTS:%.o=$(DEPDIR)/%.P)
