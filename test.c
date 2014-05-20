@@ -98,9 +98,6 @@ int main(int argc, char **argv){
 	// Initialises the rest of the data (namely, m)
 	msInit(&data);
 
-	// Calculate rho, gamma, etc from u, m and r
-	update(data.t, &data.umr, &data.res);
-
 	//inital photon stuff
 	umrat[0][0]=data.umr.u[0];
 	umrat[0][1]=0;
@@ -133,9 +130,6 @@ int main(int argc, char **argv){
 //			printf("%e\n",y[j]);
 //		}
 
-		// Go and updates values so that we can print them
-		update(data.t, &data.umr, &data.res);
-
 		// And go and print them :-)
 		// (Note that this also prints out initial data before any timesteps are made)
 		printstate(data, msdata);
@@ -146,7 +140,6 @@ int main(int argc, char **argv){
 
 		// Take a timestep
 		result = msEvolve(&data,data.t*timestep,umrat[i]);
-
 	}
 
 	// Release all file handles that are no longer necessary
