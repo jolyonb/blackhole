@@ -127,7 +127,7 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 
 
 	// Fix the origin for rho
-	s->rho[0]=s->rho[0]/(4*M_PI_3*s->dr[0]);
+	if (origin) s->rho[0]=s->rho[0]/(4*M_PI_3*s->dr[0]);
 	// Fill rho
 	i=N+1; while(i-->origin){
 		s->rho[i]=rho(umr,s,i);
@@ -141,6 +141,8 @@ static void update(double t, const dynvar * restrict umr, resvar * restrict s){
 	// Some filtering
 	filterm(s->rho);
 	filterm(s->gamma2);
+	// s->rho[N]=1/irhoFRW;
+	// s->gamma2[N]=8*M_PI_3;
 
 	// Calculate drho
 	ddxm(s->rho,s->drho);
@@ -192,12 +194,7 @@ int intfunction(double t, const double y[], double dydt[], void * params){
 	// instead of 0 to AFRW. The AFRW cancels because A is going from 0 to 1.
 	// This works - checked carefully!
 	dydt[3*N+3] = phi * gamma / dr;
-	// dydt[3*N+3]=0;
 	
-	// Derivatives at the origin
-	dydt[0]=0;
-	dydt[N+1]=0;
-	dydt[2*N+2]=0;
 
 	// Sanity checks
 	i=N+1; while(i-->0){
@@ -241,6 +238,7 @@ void regrid(state *s){
 	rebasem(s->umr.r);
 	A0 = RATIO * A0 + (1-RATIO) * AFRW;
 	s->umr.photon = s->umr.photon / RATIO + (1 - 1/RATIO);
+	s->res.lastupdated = -1;
 }
 
 // Evolve forwards in time to t1. Throws final u,m,R,A,t at photon in umrat
@@ -254,6 +252,9 @@ int msEvolve(state *s, double t1, double *umrat){
 	double oldstep;
 	int i=0,j;
 	while(s->t<t1){ // Before time t1, keep on evolving
+
+		// printf("1something els%e\n", h);
+
 
 		if (h == 0)
 			return 1;
@@ -284,6 +285,8 @@ int msEvolve(state *s, double t1, double *umrat){
 		// fprintf(stderr, "photon at %f\n", s->umr.photon);
 		// fprintf(stderr, "%e\n", h);
 		// Check for error
+	// printf("something5 els%e \t %e\n", h, oldstep);
+
 		if (j == -42) {
 			s->t = oldstate.t;
 			h = oldstep / 10;
@@ -297,6 +300,9 @@ int msEvolve(state *s, double t1, double *umrat){
 			continue;
 		}
 		if(j!=GSL_SUCCESS) return 1;
+
+	// printf("something2 els%e\n", h);
+
 
 		// Call update on the data
 		update(s->t, &s->umr, &s->res);
@@ -322,18 +328,21 @@ int msEvolve(state *s, double t1, double *umrat){
 			}
 			continue;
 		}
+	printf("hello 1\n");
 
 
 		// Set the value of u at the origin (to use better method later)
 		// s->umr.u[0]=s->umr.u[1];
-		s->umr.u[0]=u0(&s->umr);
+		if(A0==0) s->umr.u[0]=u0(&s->umr);
 		// Filter u, m and r
 		filterm(s->umr.u);
 		filterm(s->umr.m);
 		filterm(s->umr.r);
 		// Fix boundary conditions
-		s->umr.m[0]=0;
-		s->umr.r[0]=0;
+		if(A0==0) {
+			s->umr.m[0]=0;
+			s->umr.r[0]=0;
+		}
 		// Will need to fix u boundary condition later too
 
 		// Whole bunch of pinning that didn't work out so well
@@ -344,12 +353,15 @@ int msEvolve(state *s, double t1, double *umrat){
 
 		// Check for black hole formation
 		if(blackholeQ(&s->umr)!=-1){
-			fprintf(stderr, "black hole! at %f\n",AFRW*.5*(1-cos(M_PI*blackholeQ(&s->umr)/N)));
+			// fprintf(stderr, "black hole! at %f\n",AFRW*.5*(1-cos(M_PI*blackholeQ(&s->umr)/N)));
 			return 1;
 		}
 
+
 		if(s->umr.photon>1)
 			break;
+	// printf("something 4els%e\n", h);
+
 
 	}
 
@@ -360,8 +372,15 @@ int msEvolve(state *s, double t1, double *umrat){
 	umrat[3] = s->umr.photon + (1-s->umr.photon) * A0/AFRW;
 	umrat[4] = s->t;
 
+	if (s->umr.photon > .3 && A0 < .5 * AFRW){
+		// fprintf(stderr, "Regridding\n");
+		regrid(s);
+	}
+
+	printf("%e\n",h);
+
 	if(s->umr.photon>1){
-			//fprintf(stderr, "photon hit the boundary: %f > 1\n", s->umr.photon);
+			fprintf(stderr, "photon hit the boundary: %f > 1\n", s->umr.photon);
 			return 8;
 		}
 
@@ -370,6 +389,7 @@ int msEvolve(state *s, double t1, double *umrat){
 	resvar res;
 	update(s->t,&s->umr,&res);
 	i=N+1; while(i-->0){
+		if(res.rho[i]>0.000001) return 0;
 	}
 
 	// If we got to here, we have no overdensities to speak of
@@ -405,14 +425,24 @@ void bcHack(double *m, double mFRW){
 	//do some integration
 	int i;
 	i=N+1; while(i-->0) a[i]=0;
-	a[N-2]=1;
-	a[N-3]=7;
-	a[N-4]=21;
-	a[N-5]=35;
-	a[N-6]=35;
-	a[N-7]=21;
-	a[N-8]=7;
-	a[N-9]=1;
+	// a[N-2]=1;
+	// a[N-3]=7;
+	// a[N-4]=21;
+	// a[N-5]=35;
+	// a[N-6]=35;
+	// a[N-7]=21;
+	// a[N-8]=7;
+	// a[N-9]=1;
+
+	a[N-12]=1;
+	a[N-13]=7;
+	a[N-14]=21;
+	a[N-15]=35;
+	a[N-16]=35;
+	a[N-17]=21;
+	a[N-18]=7;
+	a[N-19]=1;
+
 
 	intm(a,ma);
 

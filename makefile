@@ -1,13 +1,13 @@
 
 #ifeq ($(USER),jolyon)
-	CC=icc
-	CFLAGS=-align -Ofast -ipo -march=native -restrict -vec-report=0 -prof-dir=profiling 
+#	CC=icc
+#	CFLAGS=-align -Ofast -ipo -march=native -restrict -vec-report=0 -prof-dir=profiling 
 #	LIBS=-lfftw3l /lib/libgsl.a -lmkl_blas95_lp64 -Wl,--start-group $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_sequential.a -Wl,--end-group -lpthread
-	LIBS=-L/opt/intel/mkl/lib/intel64 -lfftw3 -lfftw3l -lgsl -mkl
+#	LIBS=-L/opt/intel/mkl/lib/intel64 -lfftw3 -lfftw3l -lgsl -mkl
 #else
-#	CC=gcc
-#	CFLAGS=-Ofast -flto -march=native -std=gnu99 -fprofile-dir=profiling 
-#	LIBS=-lfftw3 -lfftw3l -lgsl -lblas -lgslcblas -lm
+	CC=gcc
+	CFLAGS=-Ofast -flto -march=native -std=gnu99 -fprofile-dir=profiling 
+	LIBS=-lfftw3 -lfftw3l -lgsl -lblas -lgslcblas -lm
 #endif
 
 default: test
