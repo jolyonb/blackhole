@@ -1,30 +1,17 @@
 # Compiled Object files
-*.slo
-*.lo
 *.o
-
-# Compiled Dynamic libraries
-*.so
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
 
 # Backup files
 *~
 
-# Executeable
-*.out
+# Executable
+/test
 
-# x86 files
-*.s
+# Output files
+*.dat
 
-# Profiling files
-*.gcda
-*.dyn
-*.dpi
-*.dpi.lock
+# Custom make configuration
+/local.mk
 
-# Hidden files
-.*
+# Dependency information
+/.deps

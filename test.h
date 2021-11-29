@@ -14,7 +14,7 @@
 #include <string.h> // Used for reading the parameter file
 #include <gsl/gsl_spline.h> // Used for interpolating to obtain initial data on the null slice
 #include <gsl/gsl_errno.h> // Needed for GSL stuff
-#include "misner-sharp.c" // Routines for evolution of the Misner-Sharp
+#include "misner-sharp.h" // Routines for evolution of the Misner-Sharp
 
 // Data type for describing a spline
 typedef struct splinetool {
